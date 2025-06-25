@@ -1,0 +1,316 @@
+#:kivy 2.3.1
+#:import MDBoxLayout kivymd.uix.boxlayout.MDBoxLayout
+#:import MDButton kivymd.uix.button.MDButton
+#:import MDLabel kivymd.uix.label.MDLabel
+#:import dp kivy.metrics.dp
+#:import ScreenManager kivy.uix.screenmanager.ScreenManager
+
+ScreenManager:
+    canvas.before:
+        Color:
+            rgba: 0.95, 0.97, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    AccueilScreen:
+        name: "accueil"
+    HistoriqueScreen:
+        name: "historique"
+
+<VisitorRow>:
+    orientation: "horizontal"
+    size_hint_y: None
+    height: dp(40)
+    spacing: dp(16)
+    FitImage:
+        source: root.image
+        size_hint_x: 0.10
+        size_hint_y: None
+        size: dp(32), dp(32)
+        radius: [16]
+    MDLabel:
+        text: root.nom
+        halign: "center"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.prenom
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.phone_number
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.id_type
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.id_number
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.motif
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.date
+        halign: "left"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.arrival_time
+        halign: "center"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.exit_time
+        halign: "center"
+        size_hint_x: 0.08
+    MDLabel:
+        text: root.observation
+        halign: "center"
+        size_hint_x: 0.08
+    MDIconButton:
+        icon: "logout"
+        size_hint: None, None
+        size: dp(36), dp(36)
+        tooltip_text: "Enregistrer la sortie"
+        on_release: app.ouvrir_dialogue_sortie(root)
+
+<VisitorTable@RecycleView>:
+    viewclass: "VisitorRow"
+    # do_scroll_x: True
+    scroll_distance: dp(50)
+    bar_width: dp(5)
+    bar_color: 0, 0, 0, 1
+    RecycleBoxLayout:
+        default_size: None, dp(40)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: "vertical"
+        spacing: dp(16)
+        padding: [0, 10, 0, 10]
+
+
+<AccueilScreen>:
+    MDBoxLayout:
+        orientation: 'vertical'
+        padding: [20, 20, 20, 20]
+        spacing: 20
+
+        # Partie supérieure (20%)
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            spacing: dp(16)
+
+            MDLabel:
+                text: "Liste des visiteurs du jour"
+                font_style: "Title"
+                halign: "left"
+                valign: "middle"
+                bold: True
+
+            MDButton:
+                size_hint_x: 0.25
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                tooltip_text: "Ajouter un visiteur"
+                on_release: app.ouvrir_dialogue_ajout_visiteur()
+                MDButtonIcon:
+                    icon: "account-plus"
+                MDButtonText:
+                    text: "Ajouter un visiteur"
+            
+            MDButton:
+                size_hint_x: 0.25
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                tooltip_text: "Partager la base de données"
+                on_release: app.ouvrir_dialogue_partager()
+
+                MDButtonIcon:
+                    icon: "share"
+                MDButtonText:
+                    text: "Partager"
+
+            MDButton:
+                size_hint_x: 0.25
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                tooltip_text: "Exporter les visiteurs"
+                on_release: app.exporter_visiteurs()
+                MDButtonIcon:
+                    icon: "export"
+                MDButtonText:
+                    text: "Exporter"
+
+            MDButton:
+                size_hint_x: 0.25
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                tooltip_text: "Importer des visiteurs"
+                on_release: app.importer_visiteurs()
+                MDButtonIcon:
+                    icon: "import"
+                MDButtonText:
+                    text: "Importer"
+
+        # Partie inférieure (80%)
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint_y: 0.8
+            padding: 10
+            spacing: 20
+
+            MDBoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(50)
+                spacing: dp(16)
+                MDLabel:
+                    text: "Image"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.10
+                MDLabel:
+                    text: "Nom"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "center"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Prénom"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Numéro de téléphone"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Type de la carte"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Numéro de la carte"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"    
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Motif"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Date"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Heure d'entrée"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "center"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Heure de sortie"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "center"
+                    size_hint_x: 0.08
+                MDLabel:
+                    text: "Observation"
+                    bold: True
+                    theme_text_color: "Primary"
+                    halign: "left"
+                    size_hint_x: 0.08
+                MDIconButton:
+                    icon: "logout"
+                    size_hint: None, None
+                    size: dp(36), dp(36)
+                    tooltip_text: "Enregistrer la sortie"
+                    on_release: app.root.current = "historique"
+
+            # La DataTable sera ajoutée dynamiquement depuis le code Python
+            VisitorTable:
+                id: table_visiteurs
+        # MDBoxLayout:
+        #     orientation: "horizontal"
+        #     size_hint_y: None
+        #     height: dp(40)
+        #     spacing: dp(10)
+        #     MDButton:
+        #         on_release: root.scroll_table_up()
+        #         MDButtonIcon:
+        #             icon: "arrow-up"
+        #     MDButton:
+        #         on_release: root.scroll_table_down()
+        #         MDButtonIcon:
+        #             icon: "arrow-down"
+
+<HistoriqueScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: [20, 20, 20, 20]
+        spacing: 20
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: dp(56)
+            spacing: dp(16)
+
+            MDLabel:
+                text: "Liste des visiteurs"
+                font_style: "Title"
+                halign: "left"
+                valign: "middle"
+                bold: True
+
+            MDTextField:
+                id: date_filter
+                mode: "outlined"
+                size_hint_x: 0.5
+                MDTextFieldHintText:
+                    text: "YYYY-MM-DD"
+                MDTextFieldHelperText:
+                    text: "Filtrer par date (YYYY-MM-DD)"
+
+            MDIconButton:
+                icon: "filter"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "blue"
+                theme_icon_color: "Custom"
+                icon_color: "white"
+                on_release: app.filtrer_historique(date_filter.text)
+
+            MDIconButton:
+                icon: "reload"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "green"
+                theme_icon_color: "Custom"
+                icon_color: "white"
+                on_release: app.afficher_historique()
+            
+            MDIconButton:
+                icon: "home"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "brown"
+                theme_icon_color: "Custom"
+                icon_color: "white"
+                on_release: app.root.current = "accueil"
+
+        VisitorTable:
+            id: historique_table
