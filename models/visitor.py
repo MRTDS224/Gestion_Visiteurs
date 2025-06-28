@@ -1,24 +1,35 @@
 import json
-from datetime import datetime, date, timezone, timedelta
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+import os
+
+# Remonte d'un dossier pour pointer vers la racine du projet
+DB_PATH = Path(__file__).parent.parent / "database/visiteurs.db"
 
 class VisitorModel:
-    def __init__(self, image, nom, prenom, phone_number, id_type, id_number, motif):
-        self.image_path = image
+    def __init__(
+        self, id, image_path, nom, prenom, phone_number, id_type, id_number, motif,
+        date=None, arrival_time=None, exit_time="", observation=""
+    ):
+        self.id = id
+        self.image_path = image_path
         self.nom = nom
         self.prenom = prenom
         self.phone_number = phone_number
         self.id_type = id_type
         self.id_number = id_number
         self.motif = motif
-        self.date = str(date.today())
-        self.arrival_time = str(datetime.now().time().strftime("%H:%M"))
-        self.observation = "None"
-        self.exit_time = self.arrival_time
+        self.date = date if date else datetime.now().date().isoformat()
+        self.arrival_time = arrival_time if arrival_time else datetime.now().strftime("%H:%M")
+        self.exit_time = exit_time
+        self.observation = observation
 
     def to_dict(self):
         """Convertit un visiteur en dictionnaire pour stockage JSON"""
         return {
-            "image": self.image_path,
+            "id": self.id,
+            "image_path": self.image_path,
             "nom": self.nom,
             "prenom": self.prenom,
             "phone_number": self.phone_number,
@@ -30,24 +41,95 @@ class VisitorModel:
             "arrival_time": self.arrival_time,
             "exit_time": self.exit_time
         }
+        
+    def set_exit_time(self, time):
+        self.exit_time = time
 
-    def set_exit_time(self, time=None):
-        self.exit_time = time if time else datetime.datetime.now().time().strftime("%H:%M")
-    
     def set_observation(self, observation):
         self.observation = observation
+
+class VisitorDatabase:
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        self.create_table()
+
+    def create_table(self):
+        """Crée la table visiteurs si elle n'existe pas."""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS visiteurs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_path TEXT NOT NULL,
+                nom TEXT NOT NULL,
+                prenom TEXT NOT NULL,
+                phone_number TEXT NOT NULL,
+                id_type TEXT NOT NULL,
+                id_number TEXT NOT NULL,
+                motif TEXT NOT NULL,
+                date TEXT NOT NULL,
+                arrival_time TEXT NOT NULL,
+                exit_time TEXT, 
+                observation TEXT 
+            )
+        ''')
+        self.conn.commit()
+
+    def add_visitor(self, image_path, nom, prenom, phone_number, id_type, id_number, motif, date=None, arrival_time=None):
+        """Ajoute un visiteur avec date et heure d'arrivée automatiques si non fournis."""
+        if date is None:
+            date = datetime.now().date().isoformat()
+        if arrival_time is None:
+            arrival_time = datetime.now().strftime("%H:%M")
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+                cursor.execute('''
+                    INSERT INTO visiteurs (image_path, nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (image_path, nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time)
+                )
+                return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
     
-    @staticmethod
-    def save_to_file(visitor):
-        """Sauvegarde un visiteur dans un fichier JSON"""
-        with open("database/visiteurs.json", "r") as file:
-            visitors = json.load(file)
-        visitors.append(visitor.to_dict())
-        with open("database/visiteurs.json", "w") as file:
-            json.dump(visitors, file, indent=1)
+    def update_visitor(self, visitor_id, **kwargs):
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            updates.append(f"{key} = ?")
+            params.append(value)
+        if not updates:
+            return False
+        params.append(visitor_id)
+        query = f"UPDATE visiteurs SET {', '.join(updates)} WHERE id = ?"
+        cursor = self.conn.cursor()
+        cursor.execute(query, params)
+        self.conn.commit()
+        return cursor.rowcount > 0
+    
+    def close(self):
+        self.conn.close()
+    
+    def delete_visitor(self, visitor_id):
+        cursor = self.conn.cursor()
+        cursor.execute('DELETE FROM visiteurs WHERE id = ?', (visitor_id,))
+        self.conn.commit()
+        return cursor.rowcount > 0
             
-    @staticmethod
-    def load_all():
-        """Charge tous les visiteurs enregistrés"""
-        with open("database/visiteurs.json", "r", encoding="utf-8") as file:
-            return json.load(file)
+    def get_visitor_by_id(self, id):
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM visiteurs WHERE id = ?', (id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return VisitorModel(*row)
+        
+        return None
+    
+    def get_all_visitors(self):
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM visiteurs')
+        rows = cursor.fetchall()
+        return [VisitorModel(*row) for row in rows]
+
+db = VisitorDatabase()

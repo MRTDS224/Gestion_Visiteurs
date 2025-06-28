@@ -1,64 +1,55 @@
-from models.visitor import VisitorModel
+from models.visitor import VisitorModel, db
 import json
+from typing import Optional, Tuple, List
 
 class VisitorManager:
-    def __init__(self):
-        self.visiteurs = VisitorModel.load_all()
+    def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
+        """Ajoute un visiteur et le sauvegarde. Retourne le VisitorModel et un message d'erreur éventuel."""
+        visitor_id = db.add_visitor(image_path, nom, prenom, phone_number, id_type, id_number, motif)
+        if not visitor_id:
+            return None, "Erreur lors de l'ajout du visiteur"
+        return VisitorModel(visitor_id, image_path, nom, prenom, phone_number, id_type, id_number, motif), None
 
-    def ajouter_visiteur(self, image, nom, prenom, phone_number, id_type, id_number, motif):
-        """Ajoute un visiteur et le sauvegarde"""
-        new_visitor = VisitorModel(image, nom, prenom, phone_number, id_type, id_number, motif)
-        VisitorModel.save_to_file(new_visitor)
-        self.visiteurs.append(new_visitor.to_dict())
-        return new_visitor
+    def supprimer_visiteur(self, visitor_id: int) -> Tuple[bool, Optional[str]]:
+        """Supprime un visiteur par son identifiant unique dans la base de données."""
+        success = db.delete_visitor(visitor_id)
+        if not success:
+            return False, "Suppression échouée"
+        return True, None
 
-    def supprimer_visiteur(self, id_number):
-        """Supprime un visiteur par son ID"""
-        self.visiteurs = [v for v in self.visiteurs if v["id_number"] != id_number]
+    def chercher_visiteur(self, visitor_id: int) -> Optional[VisitorModel]:
+        """Recherche un visiteur par identifiant unique dans la base de données."""
+        return db.get_visitor_by_id(visitor_id)
 
-    def chercher_visiteur(self, id_number):
-        """Recherche un visiteur par son numéro d'identité"""
-        return next((v for v in self.visiteurs if v["id_number"] == id_number), None)
-    
-    def lister_visiteurs(self):
-        """Retourne la liste de tous les visiteurs"""
-        return self.visiteurs
+    def lister_visiteurs(self) -> List[VisitorModel]:
+        """Retourne la liste de tous les visiteurs."""
+        return db.get_all_visitors()
 
     def exporter_visiteurs(self, chemin_fichier):
         """Exporte tous les visiteurs dans un fichier JSON."""
+        visiteurs = self.lister_visiteurs()
         with open(chemin_fichier, "w", encoding="utf-8") as f:
-            json.dump(self.lister_visiteurs(), f, ensure_ascii=False, indent=2)
-
+            json.dump([v.to_dict() for v in visiteurs], f, ensure_ascii=False, indent=4)
+            
     def importer_visiteurs(self, chemin_fichier):
         """Importe des visiteurs depuis un fichier JSON et les ajoute à la base."""
         with open(chemin_fichier, "r", encoding="utf-8") as f:
             visiteurs = json.load(f)
         for v in visiteurs:
-            # Ajoute chaque visiteur (adapte selon ta logique d'unicité)
             self.ajouter_visiteur(
-                v.get("image", ""),
+                v.get("image_path", ""),
                 v.get("nom", ""),
                 v.get("prenom", ""),
                 v.get("phone_number", ""),
                 v.get("id_type", ""),
                 v.get("id_number", ""),
-                v.get("motif", ""),
-                v.get("observation", ""),
-                v.get("date", ""),
-                v.get("arrival_time", ""),
-                v.get("exit_time", "")
+                v.get("motif", "")
             )
             
-    def mettre_a_jour_sortie(self, id_number, exit_time, observation):
-        # Mets à jour la ligne correspondante dans le fichier JSON
-        visiteur = self.chercher_visiteur(id_number)
-        if visiteur:
-            visiteur["exit_time"] = exit_time
-            visiteur["observation"] = observation
-            # Sauvegarde les modifications dans le fichier JSON
-            with open("database/visiteurs.json", "w", encoding="utf-8") as file:
-                json.dump(self.visiteurs, file, ensure_ascii=False, indent=2)
-            return True
-        return False
+    def mettre_a_jour_visiteur(self, visitor_id, **kwargs):
+        """Met à jour les informations d'un visiteur."""
+        success = db.update_visitor(visitor_id, **kwargs)
+        if not success:
+            return False, "Aucune modification effectuée"
         
-    
+        return True, None

@@ -19,7 +19,8 @@ import os
 from datetime import datetime, date, timezone, timedelta
 
 class VisitorRow(MDBoxLayout):
-    image = StringProperty("")
+    visitor_id = StringProperty("")
+    image_path = StringProperty("")
     nom = StringProperty("")
     prenom = StringProperty("")
     phone_number = StringProperty("")
@@ -196,11 +197,14 @@ class GestionVisiteursApp(MDApp):
         exit_time = self.exit_time_field.text
         observation = self.observation_field.text
         # Mets à jour la base de données via VisitorManager
-        self.manager.mettre_a_jour_sortie(
-            visitor_row.id_number,  # ou un identifiant unique
-            exit_time,
-            observation
+        success, error = self.manager.mettre_a_jour_visiteur(
+            int(visitor_row.visitor_id),
+            exit_time=exit_time,
+            observation=observation
         )
+        if not success:
+            self.show_error_dialog(error or "Erreur lors de la mise à jour du visiteur.")
+            return
         dialog.dismiss()
         self.afficher_table_visiteurs()
     
@@ -290,7 +294,7 @@ class GestionVisiteursApp(MDApp):
         error_dialog = MDDialog(
             MDDialogHeadlineText(text="Erreur"),
             MDDialogContentContainer(MDBoxLayout(
-                MDButtonText(text=message),
+                MDButton(MDButtonText(text=message)),
                 orientation="vertical",
                 adaptive_height=True
             )),
@@ -305,20 +309,21 @@ class GestionVisiteursApp(MDApp):
         visiteurs = self.manager.lister_visiteurs()
         row_data = []
         for v in visiteurs:
-            if date_filter and v["date"] != date_filter:
+            if date_filter and v.date != date_filter:
                 continue
             row = {
-                "image": v["image"],
-                "nom": v["nom"],
-                "prenom": v["prenom"],
-                "phone_number": v["phone_number"],
-                "id_type": v["id_type"],
-                "id_number": v["id_number"],
-                "motif": v["motif"],
-                "observation": v["observation"],
-                "date": v["date"],
-                "arrival_time": v["arrival_time"],
-                "exit_time": v["exit_time"]
+                "visitor_id": str(v.id),
+                "image_path": v.image_path,
+                "nom": v.nom,
+                "prenom": v.prenom,
+                "phone_number": v.phone_number,
+                "id_type": v.id_type,
+                "id_number": v.id_number,
+                "motif": v.motif,
+                "observation": v.observation if v.observation else "",
+                "date": v.date,
+                "arrival_time": v.arrival_time,
+                "exit_time": v.exit_time if v.exit_time else "",
             }
             row_data.append(row)
         
