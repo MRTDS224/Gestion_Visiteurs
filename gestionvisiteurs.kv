@@ -69,11 +69,11 @@ ScreenManager:
         halign: "center"
         size_hint_x: 0.08
     MDIconButton:
-        icon: "logout"
+        icon: "logout" if app.root.current == "accueil" else "pencil-outline"
         size_hint: None, None
         size: dp(36), dp(36)
         tooltip_text: "Enregistrer la sortie"
-        on_release: app.ouvrir_dialogue_sortie(root)
+        on_release: app.ouvrir_dialogue_sortie(root) if app.root.current == "accueil" else app.ouvrir_dialogue_modification(root)
 
 <VisitorTable@RecycleView>:
     viewclass: "VisitorRow"
