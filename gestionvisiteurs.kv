@@ -22,9 +22,16 @@ ScreenManager:
     size_hint_y: None
     height: dp(40)
     spacing: dp(16)
+    MDCheckbox:
+        id: select_checkbox
+        group: "child"
+        size_hint_x: None
+        width: dp(32)
+        active: root.selected
+        on_active: app.on_select_visitor(root, self.active)
     FitImage:
         source: root.image_path
-        size_hint_x: 0.10
+        size_hint_x: 0.08
         size_hint_y: None
         size: dp(32), dp(32)
         radius: [16]
@@ -167,6 +174,12 @@ ScreenManager:
                 size_hint_y: None
                 height: dp(50)
                 spacing: dp(16)
+                MDCheckbox:
+                    id: select_all_checkbox
+                    group: "root"
+                    size_hint_x: None
+                    width: dp(32)
+                    on_active: app.on_select_all_visitors(self.active)
                 MDLabel:
                     text: "Image"
                     bold: True
@@ -234,7 +247,7 @@ ScreenManager:
                     halign: "left"
                     size_hint_x: 0.08
                 MDIconButton:
-                    icon: "logout"
+                    icon: "history"
                     size_hint: None, None
                     size: dp(36), dp(36)
                     tooltip_text: "Enregistrer la sortie"
@@ -314,7 +327,7 @@ ScreenManager:
                 md_bg_color: "green"
                 theme_icon_color: "Custom"
                 icon_color: "white"
-                on_release: app.afficher_historique()
+                on_release: root.reinitialiser_filtre()
             
             MDIconButton:
                 icon: "home"
@@ -330,6 +343,12 @@ ScreenManager:
             size_hint_y: None
             height: dp(50)
             spacing: dp(16)
+            MDCheckbox:
+                id: select_all_checkbox
+                group: "root"
+                size_hint_x: None
+                width: dp(32)
+                on_active: app.on_select_all_visitors(self.active)
             MDLabel:
                 text: "Image"
                 bold: True

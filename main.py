@@ -13,13 +13,14 @@ from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, BooleanProperty
 from kivy.metrics import dp
 from managers.visitor_manager import VisitorManager
 import os
 from datetime import datetime, date, timezone, timedelta
 
 class VisitorRow(MDBoxLayout):
+    selected = BooleanProperty(False)
     visitor_id = StringProperty("")
     image_path = StringProperty("")
     nom = StringProperty("")
@@ -114,6 +115,11 @@ class HistoriqueScreen(MDScreen):
         
         MDApp.get_running_app().afficher_historique(date_filter)
 
+    def reinitialiser_filtre(self):
+        self.ids.day_filter.text = ""
+        self.ids.month_filter.text = ""
+        self.ids.year_filter.text = ""
+        MDApp.get_running_app().afficher_historique()
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -126,6 +132,48 @@ class GestionVisiteursApp(MDApp):
             select_path=self.select_file,
         )
         self.file_manager_mode = None
+        self.selected_image_path = ""
+        self.selected_visitors = set()
+    
+    def on_select_visitor(self, visitor_row, is_active):
+        # Détermine la table selon l'écran courant
+        screen = self.root.get_screen(self.root.current)
+        if screen.name == "accueil":
+            table = screen.ids.table_visiteurs
+        elif screen.name == "historique":
+            table = screen.ids.historique_table
+        else:
+            return
+
+        # Mets à jour la propriété 'selected' de la ligne
+        visitor_row.selected = is_active
+        # Mets aussi à jour dans la data de la table
+        for row in table.data:
+            if row.get("visitor_id") == visitor_row.visitor_id:
+                row["selected"] = is_active
+
+        if is_active:
+            if visitor_row.visitor_id not in self.selected_visitors:
+                self.selected_visitors.add(visitor_row.visitor_id)
+        else:
+            if visitor_row.visitor_id in self.selected_visitors:
+                self.selected_visitors.discard(visitor_row.visitor_id)
+    
+    def on_select_all_visitors(self, is_active):
+        screen = self.root.get_screen(self.root.current)
+        if screen.name == "accueil":
+            table = screen.ids.table_visiteurs
+        elif screen.name == "historique":
+            table = screen.ids.historique_table
+            
+        for row in table.data:
+            if is_active:
+                if row.get("selected") != is_active:
+                    self.selected_visitors.clear()
+                    screen.ids.select_all_checkbox.active = False
+                    return
+                
+                self.selected_visitors.add(row.get("visitor_id"))
     
     def open_filechooser(self):
         self.file_manager_mode = "image"
@@ -137,6 +185,35 @@ class GestionVisiteursApp(MDApp):
     def on_start(self):
         self.afficher_table_visiteurs()
         
+    def creer_bouton(self, texte, style="text", icone=None, on_release=None):
+        """Crée un bouton MDButton avec texte, style, icône et callback."""
+        elements = []
+        if icone:
+            elements.append(MDButtonIcon(icon=icone))
+        elements.append(MDButtonText(text=texte))
+        kwargs = {"style": style}
+        if on_release is not None:
+            kwargs["on_release"] = on_release
+        return MDButton(
+            *elements,
+            **kwargs
+        )
+    
+    def creer_dialogue(self, titre, content, actions):
+        dialog = MDDialog(
+            MDDialogHeadlineText(text=titre, halign="left"),
+            MDDialogContentContainer(content),
+        )
+        dialog.add_widget(
+            MDDialogButtonContainer(
+                *actions,
+                spacing="10dp"
+            )
+        )
+        dialog.auto_dismiss = False
+        dialog.open()
+        return dialog
+    
     def set_text(self, text, name):
         if name == "id":
             self.id_type_field.text = text
@@ -146,14 +223,11 @@ class GestionVisiteursApp(MDApp):
         self.menu.dismiss()
     
     def build_form_content(self, contents=None):
-        self.image_button = MDButton(
-            MDButtonIcon(
-                icon="image"
-            ),
-            MDButtonText(
-                text="Sélectionner une image"
-            ),
-            on_release=(lambda x: self.open_filechooser()),
+        self.image_button = self.creer_bouton(
+            "Sélectionner une image",
+            style="elevated",
+            icone="image",
+            on_release=lambda x: self.open_filechooser(),
         )
         self.nom_field = self.create_text_field("Entrez le nom")
         self.prenom_field = self.create_text_field("Entrez le prénom")
@@ -206,57 +280,86 @@ class GestionVisiteursApp(MDApp):
             size_hint_x=None,
             width="300dp",
         )
-        
+     
     def ouvrir_dialogue_ajout_visiteur(self):
         self.selected_image_path = ""
         content = self.build_form_content()
-        self.initialiser_dialogue(content, "Ajouter un visiteur")
+        actions = [
+            Widget(),
+            self.creer_bouton(
+                "Annuler",
+                style="text",
+                on_release=lambda x: self.dialog.dismiss()
+            ),
+            self.creer_bouton(
+                "Enregistrer",
+                style="elevated",
+                on_release=lambda x: self.enregistrer_visiteur()
+            ),
+        ]
+        self.dialog = self.creer_dialogue("Ajouter un visiteur", content, actions)
+        
+    def remplir_champs(self, visitor):
+        self.selected_image_path = visitor.image_path
+        self.image_button.children[0].text = os.path.basename(visitor.image_path) if visitor.image_path else "Sélectionner une image"
+        self.nom_field.text = visitor.nom
+        self.prenom_field.text = visitor.prenom
+        self.phone_field.text = visitor.phone_number
+        self.id_type_field.text = visitor.id_type
+        self.id_number_field.text = visitor.id_number
+        self.motif_field.text = visitor.motif
+        if hasattr(self, 'exit_time_field'):
+            self.exit_time_field.text = visitor.exit_time or ""
+        if hasattr(self, 'observation_field'):
+            self.observation_field.text = visitor.observation or ""
     
     def ouvrir_dialogue_modification(self, visitor_row):
         self.visitor_id = visitor_row.visitor_id
-        self.selected_image_path = visitor_row.image_path
-        
         self.exit_time_field = self.create_text_field("Heure de sortie (HH:MM)", required=False)
         self.observation_field = self.create_text_field("Observation", required=False)
-        self.exit_time_field.text = visitor_row.exit_time if visitor_row.exit_time else ""
-        self.observation_field.text = visitor_row.observation if visitor_row.observation else ""
-        
         content = self.build_form_content([self.exit_time_field, self.observation_field])
-        
-        # Remplit les champs avec les données du visiteur sélectionné
-        self.image_button.children[0].text = os.path.basename(visitor_row.image_path) if visitor_row.image_path else "Sélectionner une image"
-        self.nom_field.text = visitor_row.nom
-        self.prenom_field.text = visitor_row.prenom
-        self.phone_field.text = visitor_row.phone_number
-        self.id_type_field.text = visitor_row.id_type
-        self.id_number_field.text = visitor_row.id_number
-        self.motif_field.text = visitor_row.motif
-        
-        self.initialiser_dialogue(content, "Modifier le visiteur", self.enregistrer_mofication)
+        self.remplir_champs(visitor_row)
+        actions = [
+            Widget(),
+            self.creer_bouton(
+                "Annuler",
+                style="text",
+                on_release=lambda x: self.dialog.dismiss()
+            ),
+            self.creer_bouton(
+                "Enregistrer",
+                style="elevated",
+                on_release=lambda x: self.enregistrer_modification()
+            ),
+        ]
+        self.dialog = self.creer_dialogue("Modifier le visiteur", content, actions)
         
     def ouvrir_dialogue_partager(self):
-        email_button = MDButton(
-            MDButtonIcon(
-                icon="email"
-            ),
-            MDButtonText(
-                text="Envoyer par mail"
-            )
+        email_button = self.creer_bouton(
+            "Envoyer par mail",
+            style="outlined",
+            icone="email",
         )
-        whatsapp_button  = MDButton(
-            MDButtonIcon(
-                icon="whatsapp"
-            ),
-            MDButtonText(
-                text="Envoyer par whatsapp"
-            )
+        whatsapp_button  = self.creer_bouton(
+            "Envoyer par whatsapp",
+            style="outlined",
+            icone="whatsapp",
         )
         
         content = MDBoxLayout(orientation="horizontal", spacing=20, padding=10, adaptive_height=True)
         content.add_widget(email_button)
         content.add_widget(whatsapp_button)
         
-        self.initialiser_dialogue(content, "Partager")
+        actions = [
+            Widget(),
+            self.creer_bouton(
+            "Annuler",
+            style="text",
+            on_release=lambda x: self.dialog.dismiss(),
+            ),
+        ]
+        
+        self.dialog = self.creer_dialogue("Partager", content, actions)
 
     def ouvrir_dialogue_sortie(self, visitor_row):
         # Crée les champs pour heure de sortie et observation
@@ -266,27 +369,20 @@ class GestionVisiteursApp(MDApp):
         content.add_widget(self.exit_time_field)
         content.add_widget(self.observation_field)
 
-        dialog = MDDialog(
-            MDDialogHeadlineText(text="Sortie du visiteur"),
-            MDDialogContentContainer(content),
-        )
-        dialog.add_widget(
-            MDDialogButtonContainer(
-                MDButton(
-                    MDButtonText(text="Annuler"),
-                    style="text",
-                    on_release=lambda x: dialog.dismiss(),
-                ),
-                MDButton(
-                    MDButtonText(text="Valider"),
-                    style="elevated",
-                    on_release=lambda x: self.valider_sortie(visitor_row, dialog),
-                ),
-                spacing="10dp"
+        actions = [
+            Widget(),
+            self.creer_bouton(
+                "Annuler",
+                style="text",
+                on_release=lambda x: self.dialog.dismiss(),
+            ),
+            self.creer_bouton(
+                "Valider",
+                style="elevated",
+                on_release=lambda x: self.valider_sortie(visitor_row, self.dialog),
             )
-        )
-        dialog.open()
-        self.dialog_sortie = dialog
+        ]
+        self.dialog = self.creer_dialogue("Enregistrer la sortie", content, actions)
 
     def valider_sortie(self, visitor_row, dialog):
         exit_time = self.exit_time_field.text
@@ -303,37 +399,12 @@ class GestionVisiteursApp(MDApp):
         dialog.dismiss()
         self.afficher_table_visiteurs()
     
-    def initialiser_dialogue(self, content, titre, fonction=None):
-        self.dialog = MDDialog(
-            MDDialogHeadlineText(
-                text=titre,
-                halign="left",
-            ),
-            MDDialogContentContainer(
-              content,
-            ),
-        )
-        
-        if titre != "Partager":
-            self.dialog.add_widget(
-                MDDialogButtonContainer(
-                    Widget(),
-                    MDButton(
-                        MDButtonText(text="Annuler"),
-                        style="text",
-                        on_release=(lambda x: self.dialog.dismiss()),
-                    ),
-                    MDButton(
-                        MDButtonText(text="Enregistrer"),
-                        style="elevated",
-                        on_release=(lambda x: self.enregistrer_visiteur() if fonction is None else fonction())
-                    ),
-                    spacing="10dp"
-                ),
-            )
-            self.dialog.auto_dismiss = False
-            
-        self.dialog.open()
+    def valider_champs(self, nom, prenom, phone_number, id_type, id_number, motif):
+        if not all([nom, prenom, phone_number, id_type, id_number, motif]):
+            return "Tous les champs sont obligatoires."
+        if not phone_number.isdigit() or len(phone_number) < 10:
+            return "Numéro de téléphone invalide."
+        return None
 
     def open_menu(self, name):
         if name == "id":
@@ -365,7 +436,7 @@ class GestionVisiteursApp(MDApp):
             menu.open()
             self.menu = menu
     
-    def enregistrer_mofication(self):
+    def enregistrer_modification(self):
         try:
             image = self.selected_image_path
             nom = self.nom_field.text
@@ -374,10 +445,10 @@ class GestionVisiteursApp(MDApp):
             id_type = self.id_type_field.text
             id_number = self.id_number_field.text
             motif = self.motif_field.text
-            exit_time = self.exit_time_field.text if hasattr(self, 'exit_time_field') else ""
-            observation = self.observation_field.text if hasattr(self, 'observation_field') else ""
+            exit_time = self.exit_time_field.text
+            observation = self.observation_field.text
 
-            if not all([nom, prenom, phone_number, id_type, id_number, motif]):
+            if not all([nom, prenom, phone_number, id_type, id_number, motif, exit_time, observation]):
                 self.show_error_dialog("Tous les champs sont obligatoires.")
                 return
 
@@ -413,6 +484,11 @@ class GestionVisiteursApp(MDApp):
                 self.show_error_dialog("Tous les champs sont obligatoires.")
                 return
 
+            erreur = self.valider_champs(nom, prenom, phone_number, id_type, id_number, motif)
+            if erreur:
+                self.show_error_dialog(erreur)
+                return
+
             self.manager.ajouter_visiteur(image, nom, prenom, phone_number, id_type, id_number, motif)
             self.dialog.dismiss()
             self.afficher_table_visiteurs()
@@ -430,7 +506,7 @@ class GestionVisiteursApp(MDApp):
         )
         error_dialog.open()
 
-    def afficher_visiteurs(self,table_id, date_filter=None):
+    def afficher_visiteurs(self, table_id, date_filter=None):
         """Affiche les visiteurs dans la table spécifiée, avec un filtre de date optionnel."""
         screen = self.root.get_screen(self.root.current)
         visitor_table = screen.ids[table_id]
@@ -453,6 +529,7 @@ class GestionVisiteursApp(MDApp):
                 "date": v.date,
                 "arrival_time": v.arrival_time,
                 "exit_time": v.exit_time if v.exit_time else "",
+                "selected": False,
             }
             row_data.append(row)
         
@@ -476,10 +553,13 @@ class GestionVisiteursApp(MDApp):
             self.afficher_table_visiteurs()
             self.show_error_dialog("Import terminé !")
         elif self.file_manager_mode == "image":
+            if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                self.show_error_dialog("Veuillez sélectionner un fichier image valide.")
+                return
             self.selected_image_path = path
             if hasattr(self, "image_button"):
                 self.image_button.children[0].text = os.path.basename(path)
-        self.file_manager_mode = None
+                self.file_manager_mode = None
         
     def exporter_visiteurs(self):
         self.file_manager_mode = "export"
