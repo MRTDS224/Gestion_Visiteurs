@@ -261,7 +261,7 @@ ScreenManager:
     MDBoxLayout:
         orientation: "vertical"
         padding: [20, 20, 20, 20]
-        spacing: 20
+        spacing: 30
 
         MDBoxLayout:
             orientation: "horizontal"
@@ -277,13 +277,26 @@ ScreenManager:
                 bold: True
 
             MDTextField:
-                id: date_filter
+                id: year_filter
                 mode: "outlined"
-                size_hint_x: 0.5
+                size_hint_x: 0.23
+                on_focus: if self.focus: root.open_menu("year_filter")
                 MDTextFieldHintText:
-                    text: "YYYY-MM-DD"
-                MDTextFieldHelperText:
-                    text: "Filtrer par date (YYYY-MM-DD)"
+                    text: "Années"
+            MDTextField:
+                id: month_filter
+                mode: "outlined"
+                size_hint_x: 0.2
+                on_focus: if self.focus: root.open_menu("month_filter")
+                MDTextFieldHintText:
+                    text: "Mois"
+            MDTextField:
+                id: day_filter
+                mode: "outlined"
+                size_hint_x: 0.2
+                on_focus: if self.focus: root.open_menu("day_filter")
+                MDTextFieldHintText:
+                    text: "Jours"
 
             MDIconButton:
                 icon: "filter"
@@ -292,7 +305,7 @@ ScreenManager:
                 md_bg_color: "blue"
                 theme_icon_color: "Custom"
                 icon_color: "white"
-                on_release: app.filtrer_historique(date_filter.text)
+                on_release: root.filtrer_historique(year_filter.text, month_filter.text, day_filter.text)
 
             MDIconButton:
                 icon: "reload"
@@ -312,5 +325,84 @@ ScreenManager:
                 icon_color: "white"
                 on_release: app.root.current = "accueil"
 
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(50)
+            spacing: dp(16)
+            MDLabel:
+                text: "Image"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.10
+            MDLabel:
+                text: "Nom"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "center"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Prénom"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Numéro de téléphone"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Type de la carte"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Numéro de la carte"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"    
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Motif"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Date"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Heure d'entrée"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "center"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Heure de sortie"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "center"
+                size_hint_x: 0.08
+            MDLabel:
+                text: "Observation"
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: 0.08
+            MDLabel:
+                text: ""
+                bold: True
+                theme_text_color: "Primary"
+                halign: "left"
+                size_hint_x: None
+                width: dp(36)
+        
         VisitorTable:
             id: historique_table

@@ -43,9 +43,76 @@ class AccueilScreen(MDScreen):
         table.scroll_y = max(0, table.scroll_y - 0.1)
 
 class HistoriqueScreen(MDScreen):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        months = ["Janvier", "Février", "Mars", "Avril", "May", "Juin",
+            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+        self.days_items = [
+            {
+                "text": f"{i}",
+                "on_release": lambda x=f"{i}": self.set_item(x, "day_filter"),
+            } for i in range(1, 32)]
+        self.months_items = [
+            {
+                "text": months[i],
+                "on_release": lambda x=str(i+1): self.set_item(x, "month_filter"),
+            } for i in range(len(months))]
+        self.years_items = [
+            {
+                "text": str(year),
+                "on_release": lambda x=str(year): self.set_item(x, "year_filter"),
+            } for year in range(2024, datetime.now(timezone.utc).year + 1)
+        ]
+        self.menu = MDDropdownMenu(
+            position="bottom",
+            width=dp(100),
+        )
+        
     def on_enter(self, *args):
         MDApp.get_running_app().afficher_historique()
+        
+    def open_menu(self, field_name):
+        """Ouvre le menu pour sélectionner le jour, le mois ou l'année."""
+        if "day" in field_name:
+            items = self.days_items
+        elif "month" in field_name:
+            items = self.months_items
+        elif "year" in field_name:
+            items = self.years_items
+        else:
+            return
+        
+        self.menu.items = items
+        self.menu.caller = self.get_field(field_name)
+        self.menu.open()
+    
+    def set_item(self, item, field_name):
+        """Met à jour le champ de date avec l'item sélectionné."""
+        self.get_field(field_name).text = item
+        self.menu.dismiss()
+        
+    def get_field(self, field_name):
+        """Retourne le champ de date correspondant au nom."""
+        if "day" in field_name:
+            return self.ids.day_filter
+        elif "month" in field_name:
+            return self.ids.month_filter
+        elif "year" in field_name:
+            return self.ids.year_filter
+        else:
+            raise ValueError(f"Champ inconnu : {field_name}")
 
+    def filtrer_historique(self, year, month, day):
+        """Filtre l'historique en fonction de l'année, du mois et du jour."""
+        date_filter = ""
+        if year != "":
+            date_filter += year
+        if month != "":
+            date_filter += f"-{month.zfill(2)}"
+        if day != "":
+            date_filter += f"-{day.zfill(2)}"
+        
+        MDApp.get_running_app().afficher_historique(date_filter)
 
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
@@ -259,7 +326,7 @@ class GestionVisiteursApp(MDApp):
                     MDButton(
                         MDButtonText(text="Enregistrer"),
                         style="elevated",
-                        on_release=(lambda x: self.enregistrer_visiteur(self.dialog) if fonction is None else fonction())
+                        on_release=(lambda x: self.enregistrer_visiteur() if fonction is None else fonction())
                     ),
                     spacing="10dp"
                 ),
@@ -396,9 +463,6 @@ class GestionVisiteursApp(MDApp):
 
     def afficher_historique(self, date_filter=None):
         self.afficher_visiteurs(table_id="historique_table", date_filter=date_filter)
-        
-    def filtrer_historique(self, date_str):
-        self.afficher_historique(date_filter=date_str)
 
     def select_file(self, path):
         self.file_manager.close()
