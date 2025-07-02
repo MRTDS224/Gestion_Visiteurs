@@ -8,6 +8,7 @@ from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
+from kivymd.uix.snackbar import snackbar
 from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -192,6 +193,10 @@ class GestionVisiteursApp(MDApp):
         
     def on_start(self):
         self.afficher_table_visiteurs()
+        
+    def build(self):
+        self.theme_cls.primary_palette = "Blue"
+        self.theme_cls.accent_palette = "Amber"
         
     def creer_bouton(self, texte, style="text", icone=None, on_release=None):
         """Crée un bouton MDButton avec texte, style, icône et callback."""
@@ -515,7 +520,10 @@ class GestionVisiteursApp(MDApp):
             )),
         )
         error_dialog.open()
-
+        
+    def show_info_snackbar(self, message):
+        snackbar(text=message, duration=2).open()
+        
     def afficher_visiteurs(self, table_id, date_filter=None):
         """Affiche les visiteurs dans la table spécifiée, avec un filtre de date optionnel."""
         screen = self.root.get_screen(self.root.current)

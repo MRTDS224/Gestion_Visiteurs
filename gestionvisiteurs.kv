@@ -20,7 +20,7 @@ ScreenManager:
 <VisitorRow>:
     orientation: "horizontal"
     size_hint_y: None
-    height: dp(40)
+    height: dp(48)
     spacing: dp(16)
     MDCheckbox:
         id: select_checkbox
@@ -84,7 +84,6 @@ ScreenManager:
 
 <VisitorTable@RecycleView>:
     viewclass: "VisitorRow"
-    # do_scroll_x: True
     scroll_distance: dp(50)
     bar_width: dp(5)
     bar_color: 0, 0, 0, 1
@@ -95,7 +94,7 @@ ScreenManager:
         height: self.minimum_height
         orientation: "vertical"
         spacing: dp(16)
-        padding: [0, 10, 0, 10]
+        padding: [dp(8), dp(8), dp(8), dp(8)]
 
 
 <AccueilScreen>:
@@ -134,7 +133,7 @@ ScreenManager:
                 pos_hint: {"center_y": 0.5}
                 tooltip_text: "Partager la base de données"
                 disabled: not root.partager_visible
-                opacity: 1 if root.partager_visible else 0
+                # md_bg_color_disabled: 0.8, 0.8, 0.8, 1
                 on_release: app.ouvrir_dialogue_partager()
 
                 MDButtonIcon:
@@ -163,13 +162,17 @@ ScreenManager:
                     icon: "import"
                 MDButtonText:
                     text: "Importer"
-
+        
+        MDDivider:
+            height: "2dp"
+        
         # Partie inférieure (80%)
         MDBoxLayout:
             orientation: 'vertical'
             size_hint_y: 0.8
             padding: 10
             spacing: 20
+            padding: [dp(8), 0, dp(8), 0]
 
             MDBoxLayout:
                 orientation: 'horizontal'
@@ -182,72 +185,109 @@ ScreenManager:
                     size_hint_x: None
                     width: dp(32)
                     on_active: app.on_select_all_visitors(self.active)
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Image"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
-                    size_hint_x: 0.10
+                    size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Nom"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "center"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Prénom"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
-                    text: "Numéro de téléphone"
+                    text: "N° de téléphone"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                    font_size: self.width * 0.1
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Type de la carte"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
-                    text: "Numéro de la carte"
+                    text: "N° de la carte"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"    
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Motif"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Date"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Heure d'entrée"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "center"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Heure de sortie"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "center"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDLabel:
                     text: "Observation"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
                     size_hint_x: 0.08
+                MDDivider:
+                    height: "2dp"
+                    orientation: "vertical"
                 MDIconButton:
                     icon: "history"
                     size_hint: None, None
@@ -255,6 +295,8 @@ ScreenManager:
                     tooltip_text: "Enregistrer la sortie"
                     on_release: app.root.current = "historique"
 
+            MDDivider:
+                height: "2dp"
             # La DataTable sera ajoutée dynamiquement depuis le code Python
             VisitorTable:
                 id: table_visiteurs
@@ -285,7 +327,7 @@ ScreenManager:
             spacing: dp(16)
 
             MDLabel:
-                text: "Liste des visiteurs"
+                text: "Liste de tous les visiteurs"
                 font_style: "Title"
                 halign: "left"
                 valign: "middle"
@@ -340,6 +382,9 @@ ScreenManager:
                 icon_color: "white"
                 on_release: app.root.current = "accueil"
 
+        MDDivider:
+            height: "2dp"
+
         MDBoxLayout:
             orientation: 'horizontal'
             size_hint_y: None
@@ -351,72 +396,109 @@ ScreenManager:
                 size_hint_x: None
                 width: dp(32)
                 on_active: app.on_select_all_visitors(self.active)
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Image"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
-                size_hint_x: 0.10
+                size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Nom"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "center"
                 size_hint_x: 0.08
+            
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Prénom"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
-                text: "Numéro de téléphone"
+                text: "N° de téléphone"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Type de la carte"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
-                text: "Numéro de la carte"
+                text: "N° de la carte"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"    
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Motif"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Date"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Heure d'entrée"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "center"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Heure de sortie"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "center"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: "Observation"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
                 size_hint_x: 0.08
+            MDDivider:
+                height: "2dp"
+                orientation: "vertical"
             MDLabel:
                 text: ""
                 bold: True
@@ -425,5 +507,8 @@ ScreenManager:
                 size_hint_x: None
                 width: dp(36)
         
+        MDDivider:
+            height: "2dp"
+
         VisitorTable:
             id: historique_table
