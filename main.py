@@ -18,6 +18,8 @@ from kivy.metrics import dp
 from managers.visitor_manager import VisitorManager
 import os
 from datetime import datetime, date, timezone, timedelta
+import webbrowser
+import urllib.parse
 
 class VisitorRow(MDBoxLayout):
     selected = BooleanProperty(False)
@@ -35,6 +37,8 @@ class VisitorRow(MDBoxLayout):
     observation = StringProperty("")
 
 class AccueilScreen(MDScreen):
+    partager_visible = BooleanProperty(False)
+    
     def scroll_table_up(self):
         table = self.ids.table_visiteurs
         table.scroll_y = min(1, table.scroll_y + 0.1)
@@ -158,6 +162,8 @@ class GestionVisiteursApp(MDApp):
         else:
             if visitor_row.visitor_id in self.selected_visitors:
                 self.selected_visitors.discard(visitor_row.visitor_id)
+        
+        screen.partager_visible = bool(self.selected_visitors)
     
     def on_select_all_visitors(self, is_active):
         screen = self.root.get_screen(self.root.current)
@@ -174,6 +180,8 @@ class GestionVisiteursApp(MDApp):
                     return
                 
                 self.selected_visitors.add(row.get("visitor_id"))
+        
+        screen.partager_visible = bool(self.selected_visitors)
     
     def open_filechooser(self):
         self.file_manager_mode = "image"
@@ -339,11 +347,13 @@ class GestionVisiteursApp(MDApp):
             "Envoyer par mail",
             style="outlined",
             icone="email",
+            on_release=lambda x: self.envoyer_par_mail()
         )
         whatsapp_button  = self.creer_bouton(
             "Envoyer par whatsapp",
             style="outlined",
             icone="whatsapp",
+            on_release=lambda x: self.envoyer_par_whatsapp()
         )
         
         content = MDBoxLayout(orientation="horizontal", spacing=20, padding=10, adaptive_height=True)
@@ -568,6 +578,45 @@ class GestionVisiteursApp(MDApp):
     def importer_visiteurs(self):
         self.file_manager_mode = "import"
         self.file_manager.show("C:/Users/mrtds/Documents")
+        
+    def envoyer_par_mail(self, *args):
+        visiteurs = [row for row in self.manager.lister_visiteurs() if str(row.id) in self.selected_visitors]
+        if not visiteurs:
+            self.show_error_dialog("Aucun visiteur sélectionné.")
+            return
+
+        sujet = "Liste des visiteurs sélectionnés"
+        corps = self.generer_message_visiteurs(visiteurs)
+        mailto_link = f"mailto:?subject={urllib.parse.quote(sujet)}&body={urllib.parse.quote(corps)}"
+        webbrowser.open(mailto_link)
+        self.dialog.dismiss()
+
+    def envoyer_par_whatsapp(self, *args):
+        visiteurs = [row for row in self.manager.lister_visiteurs() if str(row.id) in self.selected_visitors]
+        if not visiteurs:
+            self.show_error_dialog("Aucun visiteur sélectionné.")
+            return
+
+        message = self.generer_message_visiteurs(visiteurs)
+        whatsapp_link = f"https://wa.me/?text={urllib.parse.quote(message)}"
+        webbrowser.open(whatsapp_link)
+        self.dialog.dismiss()
+    
+    def generer_message_visiteurs(self, visiteurs):
+        lignes = ["Liste des visiteurs sélectionnés :\n"]
+        for i, v in enumerate(visiteurs, 1):
+            lignes.append(
+                f"{i}. Nom : {v.nom}\n"
+                f"   Prénom : {v.prenom}\n"
+                f"   Téléphone : {v.phone_number}\n"
+                f"   Pièce d'identité : {v.id_type} - {v.id_number}\n"
+                f"   Motif : {v.motif}\n"
+                f"   Date : {v.date}\n"
+                f"   Heure d'arrivée : {v.arrival_time}\n"
+                f"   Heure de sortie : {v.exit_time or 'Non renseignée'}\n"
+                f"   Observation : {v.observation or 'Aucune'}\n"
+            )
+        return "\n".join(lignes)
 
 if __name__ == "__main__":
     GestionVisiteursApp().run()
