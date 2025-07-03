@@ -21,6 +21,8 @@ import os
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import urllib.parse
+from kivy.uix.screenmanager import SlideTransition
+from kivy.animation import Animation
 
 class VisitorRow(MDBoxLayout):
     selected = BooleanProperty(False)
@@ -197,7 +199,9 @@ class GestionVisiteursApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.accent_palette = "Amber"
-        
+        self.root.transition = SlideTransition(duration=0.3)  # Animation douce
+        return self.root
+    
     def creer_bouton(self, texte, style="text", icone=None, on_release=None):
         """Crée un bouton MDButton avec texte, style, icône et callback."""
         elements = []
@@ -205,12 +209,24 @@ class GestionVisiteursApp(MDApp):
             elements.append(MDButtonIcon(icon=icone))
         elements.append(MDButtonText(text=texte))
         kwargs = {"style": style}
+
+        def _on_release(instance):
+            self.animer_bouton(instance)
+            if on_release:
+                on_release(instance)
+
         if on_release is not None:
-            kwargs["on_release"] = on_release
+            kwargs["on_release"] = _on_release
+
         return MDButton(
             *elements,
-            **kwargs
+            **kwargs,
+            focus=True
         )
+    
+    def animer_bouton(self, bouton):
+        anim = Animation(opacity=0.5, duration=0.1) + Animation(opacity=1, duration=0.1)
+        anim.start(bouton)
     
     def creer_dialogue(self, titre, content, actions):
         dialog = MDDialog(
@@ -292,6 +308,7 @@ class GestionVisiteursApp(MDApp):
             mode="outlined",
             size_hint_x=None,
             width="300dp",
+            focus=True,
         )
      
     def ouvrir_dialogue_ajout_visiteur(self):

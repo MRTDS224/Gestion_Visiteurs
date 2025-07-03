@@ -80,6 +80,7 @@ ScreenManager:
         size_hint: None, None
         size: dp(36), dp(36)
         tooltip_text: "Enregistrer la sortie"
+        focus: True
         on_release: app.ouvrir_dialogue_sortie(root) if app.root.current == "accueil" else app.ouvrir_dialogue_modification(root)
 
 <VisitorTable@RecycleView>:
@@ -120,6 +121,7 @@ ScreenManager:
                 size_hint_x: 0.25
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
+                focus: True
                 tooltip_text: "Ajouter un visiteur"
                 on_release: app.ouvrir_dialogue_ajout_visiteur()
                 MDButtonIcon:
@@ -133,6 +135,7 @@ ScreenManager:
                 pos_hint: {"center_y": 0.5}
                 tooltip_text: "Partager la base de données"
                 disabled: not root.partager_visible
+                focus: True
                 # md_bg_color_disabled: 0.8, 0.8, 0.8, 1
                 on_release: app.ouvrir_dialogue_partager()
 
@@ -145,6 +148,7 @@ ScreenManager:
                 size_hint_x: 0.25
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
+                focus: True
                 tooltip_text: "Exporter les visiteurs"
                 on_release: app.exporter_visiteurs()
                 MDButtonIcon:
@@ -156,6 +160,7 @@ ScreenManager:
                 size_hint_x: 0.25
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
+                focus: True
                 tooltip_text: "Importer des visiteurs"
                 on_release: app.importer_visiteurs()
                 MDButtonIcon:
@@ -292,6 +297,7 @@ ScreenManager:
                     icon: "history"
                     size_hint: None, None
                     size: dp(36), dp(36)
+                    focus: True
                     tooltip_text: "Enregistrer la sortie"
                     on_release: app.root.current = "historique"
 
@@ -305,11 +311,11 @@ ScreenManager:
         #     size_hint_y: None
         #     height: dp(40)
         #     spacing: dp(10)
-        #     MDButton:
+        #     MDButton:focus: True
         #         on_release: root.scroll_table_up()
         #         MDButtonIcon:
         #             icon: "arrow-up"
-        #     MDButton:
+        #     MDButton:focus: True
         #         on_release: root.scroll_table_down()
         #         MDButtonIcon:
         #             icon: "arrow-down"
@@ -337,6 +343,7 @@ ScreenManager:
                 id: year_filter
                 mode: "outlined"
                 size_hint_x: 0.23
+                focus: True
                 on_focus: if self.focus: root.open_menu("year_filter")
                 MDTextFieldHintText:
                     text: "Années"
@@ -344,6 +351,7 @@ ScreenManager:
                 id: month_filter
                 mode: "outlined"
                 size_hint_x: 0.2
+                focus: True
                 on_focus: if self.focus: root.open_menu("month_filter")
                 MDTextFieldHintText:
                     text: "Mois"
@@ -351,6 +359,7 @@ ScreenManager:
                 id: day_filter
                 mode: "outlined"
                 size_hint_x: 0.2
+                focus: True
                 on_focus: if self.focus: root.open_menu("day_filter")
                 MDTextFieldHintText:
                     text: "Jours"
@@ -362,6 +371,7 @@ ScreenManager:
                 md_bg_color: "blue"
                 theme_icon_color: "Custom"
                 icon_color: "white"
+                focus: True
                 on_release: root.filtrer_historique(year_filter.text, month_filter.text, day_filter.text)
 
             MDIconButton:
@@ -371,6 +381,7 @@ ScreenManager:
                 md_bg_color: "green"
                 theme_icon_color: "Custom"
                 icon_color: "white"
+                focus: True
                 on_release: root.reinitialiser_filtre()
             
             MDIconButton:
@@ -380,6 +391,7 @@ ScreenManager:
                 md_bg_color: "brown"
                 theme_icon_color: "Custom"
                 icon_color: "white"
+                focus: True
                 on_release: app.root.current = "accueil"
 
         MDDivider:
