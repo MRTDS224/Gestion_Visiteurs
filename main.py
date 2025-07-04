@@ -51,6 +51,7 @@ class AccueilScreen(MDScreen):
         table.scroll_y = max(0, table.scroll_y - 0.1)
 
 class HistoriqueScreen(MDScreen):
+    partager_visible = BooleanProperty(False)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         months = ["Janvier", "Février", "Mars", "Avril", "May", "Juin",
@@ -110,23 +111,28 @@ class HistoriqueScreen(MDScreen):
         else:
             raise ValueError(f"Champ inconnu : {field_name}")
 
-    def filtrer_historique(self, year, month, day):
+    def filtrer_historique(self, year=None, month=None, day=None):
         """Filtre l'historique en fonction de l'année, du mois et du jour."""
-        date_filter = ""
-        if year != "":
-            date_filter += year
-        if month != "":
-            date_filter += f"-{month.zfill(2)}"
-        if day != "":
-            date_filter += f"-{day.zfill(2)}"
-        
-        MDApp.get_running_app().afficher_historique(date_filter)
+        if year and month and day:
+            date_filter = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            self.reinitialiser_filtre(date_filter)
+        elif year and month:
+            date_filter = f"{year}-{month.zfill(2)}"
+            self.reinitialiser_filtre(date_filter, "year-month")
+        elif year:
+            self.reinitialiser_filtre(year, "year")
+        elif month:
+            self.reinitialiser_filtre(month.zfill(2), "month")
+        elif day:
+            self.reinitialiser_filtre(day.zfill(2), "day")
+        else:
+            self.reinitialiser_filtre()
 
-    def reinitialiser_filtre(self):
+    def reinitialiser_filtre(self, date_filter=None, date_filter_type=""):
         self.ids.day_filter.text = ""
         self.ids.month_filter.text = ""
         self.ids.year_filter.text = ""
-        MDApp.get_running_app().afficher_historique()
+        MDApp.get_running_app().afficher_historique(date_filter, date_filter_type=date_filter_type)
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -195,7 +201,7 @@ class GestionVisiteursApp(MDApp):
         
     def on_start(self):
         self.afficher_table_visiteurs()
-        
+    
     def build(self):
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.accent_palette = "Amber"
@@ -220,8 +226,7 @@ class GestionVisiteursApp(MDApp):
 
         return MDButton(
             *elements,
-            **kwargs,
-            focus=True
+            **kwargs
         )
     
     def animer_bouton(self, bouton):
@@ -308,7 +313,6 @@ class GestionVisiteursApp(MDApp):
             mode="outlined",
             size_hint_x=None,
             width="300dp",
-            focus=True,
         )
      
     def ouvrir_dialogue_ajout_visiteur(self):
@@ -541,7 +545,7 @@ class GestionVisiteursApp(MDApp):
     def show_info_snackbar(self, message):
         snackbar(text=message, duration=2).open()
         
-    def afficher_visiteurs(self, table_id, date_filter=None):
+    def afficher_visiteurs(self, table_id, date_filter=None, date_filter_type=""):
         """Affiche les visiteurs dans la table spécifiée, avec un filtre de date optionnel."""
         screen = self.root.get_screen(self.root.current)
         visitor_table = screen.ids[table_id]
@@ -549,8 +553,22 @@ class GestionVisiteursApp(MDApp):
         visiteurs = self.manager.lister_visiteurs()
         row_data = []
         for v in visiteurs:
-            if date_filter and v.date != date_filter:
+            try:
+                year, month, day = v.date.split("-")
+            except ValueError:
+                continue  # Ignore les dates mal formatées
+
+            if date_filter_type == "day" and date_filter != day:
                 continue
+            elif date_filter_type == "month" and date_filter != month:
+                continue
+            elif date_filter_type == "year" and date_filter != year:
+                continue
+            elif date_filter_type == "year-month" and not (date_filter.startswith(f"{year}-{month}")):
+                continue
+            elif date_filter and date_filter_type == "" and date_filter != v.date:
+                continue
+
             row = {
                 "visitor_id": str(v.id),
                 "image_path": v.image_path,
@@ -567,19 +585,18 @@ class GestionVisiteursApp(MDApp):
                 "selected": False,
             }
             row_data.append(row)
-        
+
         visitor_table.data = row_data
     
     def afficher_table_visiteurs(self, date=str(date.today())):
         self.afficher_visiteurs(table_id="table_visiteurs", date_filter=date)
 
-    def afficher_historique(self, date_filter=None):
-        self.afficher_visiteurs(table_id="historique_table", date_filter=date_filter)
+    def afficher_historique(self, date_filter=None, date_filter_type=""):
+        self.afficher_visiteurs(table_id="historique_table", date_filter=date_filter, date_filter_type=date_filter_type)
 
     def select_file(self, path):
         self.file_manager.close()
         if self.file_manager_mode == "export":
-            # Si l'utilisateur sélectionne un dossier, propose un nom de fichier
             chemin = os.path.join(path, "visiteurs_export.json") if os.path.isdir(path) else path
             self.manager.exporter_visiteurs(chemin)
             self.show_error_dialog(f"Export terminé !\nFichier : {chemin}")
@@ -595,14 +612,6 @@ class GestionVisiteursApp(MDApp):
             if hasattr(self, "image_button"):
                 self.image_button.children[0].text = os.path.basename(path)
                 self.file_manager_mode = None
-        
-    def exporter_visiteurs(self):
-        self.file_manager_mode = "export"
-        self.file_manager.show("C:/Users/mrtds/Documents")
-
-    def importer_visiteurs(self):
-        self.file_manager_mode = "import"
-        self.file_manager.show("C:/Users/mrtds/Documents")
         
     def envoyer_par_mail(self, *args):
         visiteurs = [row for row in self.manager.lister_visiteurs() if str(row.id) in self.selected_visitors]

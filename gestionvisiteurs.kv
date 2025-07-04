@@ -20,7 +20,7 @@ ScreenManager:
 <VisitorRow>:
     orientation: "horizontal"
     size_hint_y: None
-    height: dp(48)
+    height: dp(60)
     spacing: dp(16)
     MDCheckbox:
         id: select_checkbox
@@ -58,7 +58,7 @@ ScreenManager:
     MDLabel:
         text: root.motif
         halign: "left"
-        size_hint_x: 0.08
+        size_hint_x: 0.1
     MDLabel:
         text: root.date
         halign: "left"
@@ -104,12 +104,11 @@ ScreenManager:
         padding: [20, 20, 20, 20]
         spacing: 20
 
-        # Partie supérieure (20%)
+        # Partie supérieure (10%)
         MDBoxLayout:
             orientation: 'horizontal'
-            size_hint_y: 0.2
+            size_hint_y: 0.1
             spacing: dp(16)
-
             MDLabel:
                 text: "Liste des visiteurs du jour"
                 font_style: "Title"
@@ -117,72 +116,45 @@ ScreenManager:
                 valign: "middle"
                 bold: True
 
-            MDButton:
-                size_hint_x: 0.25
+            MDExtendedFabButton:
+                id: add_visitor_btn
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
-                focus: True
-                tooltip_text: "Ajouter un visiteur"
+                on_enter: self.fab_state = "expand"
+                on_leave: self.fab_state = "collapse"
                 on_release: app.ouvrir_dialogue_ajout_visiteur()
-                MDButtonIcon:
+                MDExtendedFabButtonIcon:
                     icon: "account-plus"
-                MDButtonText:
+                MDExtendedFabButtonText:
                     text: "Ajouter un visiteur"
             
-            MDButton:
-                size_hint_x: 0.25
+            MDExtendedFabButton:
+                id: share_btn
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
-                tooltip_text: "Partager la base de données"
                 disabled: not root.partager_visible
-                focus: True
-                # md_bg_color_disabled: 0.8, 0.8, 0.8, 1
+                on_enter: self.fab_state = "expand"
+                on_leave: self.fab_state = "collapse"
                 on_release: app.ouvrir_dialogue_partager()
-
-                MDButtonIcon:
+                MDExtendedFabButtonIcon:
                     icon: "share"
-                MDButtonText:
+                MDExtendedFabButtonText:
                     text: "Partager"
-
-            MDButton:
-                size_hint_x: 0.25
-                height: dp(48)
-                pos_hint: {"center_y": 0.5}
-                focus: True
-                tooltip_text: "Exporter les visiteurs"
-                on_release: app.exporter_visiteurs()
-                MDButtonIcon:
-                    icon: "export"
-                MDButtonText:
-                    text: "Exporter"
-
-            MDButton:
-                size_hint_x: 0.25
-                height: dp(48)
-                pos_hint: {"center_y": 0.5}
-                focus: True
-                tooltip_text: "Importer des visiteurs"
-                on_release: app.importer_visiteurs()
-                MDButtonIcon:
-                    icon: "import"
-                MDButtonText:
-                    text: "Importer"
         
         MDDivider:
             height: "2dp"
         
-        # Partie inférieure (80%)
+        # Partie inférieure (90%)
         MDBoxLayout:
             orientation: 'vertical'
-            size_hint_y: 0.8
+            size_hint_y: 0.9
             padding: 10
             spacing: 20
             padding: [dp(8), 0, dp(8), 0]
 
             MDBoxLayout:
                 orientation: 'horizontal'
-                size_hint_y: None
-                height: dp(50)
+                size_hint_y: 0.1
                 spacing: dp(16)
                 MDCheckbox:
                     id: select_all_checkbox
@@ -221,7 +193,7 @@ ScreenManager:
                     height: "2dp"
                     orientation: "vertical"
                 MDLabel:
-                    text: "N° de téléphone"
+                    text: "Téléphone"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "left"
@@ -267,7 +239,7 @@ ScreenManager:
                     height: "2dp"
                     orientation: "vertical"
                 MDLabel:
-                    text: "Heure d'entrée"
+                    text: "Entrée"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "center"
@@ -276,7 +248,7 @@ ScreenManager:
                     height: "2dp"
                     orientation: "vertical"
                 MDLabel:
-                    text: "Heure de sortie"
+                    text: "Sortie"
                     bold: True
                     theme_text_color: "Primary"
                     halign: "center"
@@ -303,22 +275,8 @@ ScreenManager:
 
             MDDivider:
                 height: "2dp"
-            # La DataTable sera ajoutée dynamiquement depuis le code Python
             VisitorTable:
                 id: table_visiteurs
-        # MDBoxLayout:
-        #     orientation: "horizontal"
-        #     size_hint_y: None
-        #     height: dp(40)
-        #     spacing: dp(10)
-        #     MDButton:focus: True
-        #         on_release: root.scroll_table_up()
-        #         MDButtonIcon:
-        #             icon: "arrow-up"
-        #     MDButton:focus: True
-        #         on_release: root.scroll_table_down()
-        #         MDButtonIcon:
-        #             icon: "arrow-down"
 
 <HistoriqueScreen>:
     MDBoxLayout:
@@ -371,7 +329,7 @@ ScreenManager:
                 md_bg_color: "blue"
                 theme_icon_color: "Custom"
                 icon_color: "white"
-                focus: True
+                pos_hint: {"center_y": 0.5}
                 on_release: root.filtrer_historique(year_filter.text, month_filter.text, day_filter.text)
 
             MDIconButton:
@@ -381,7 +339,7 @@ ScreenManager:
                 md_bg_color: "green"
                 theme_icon_color: "Custom"
                 icon_color: "white"
-                focus: True
+                pos_hint: {"center_y": 0.5}
                 on_release: root.reinitialiser_filtre()
             
             MDIconButton:
@@ -391,8 +349,20 @@ ScreenManager:
                 md_bg_color: "brown"
                 theme_icon_color: "Custom"
                 icon_color: "white"
-                focus: True
+                pos_hint: {"center_y": 0.5}
                 on_release: app.root.current = "accueil"
+            MDExtendedFabButton:
+                id: share_btn
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                disabled: not root.partager_visible
+                on_enter: self.fab_state = "expand"
+                on_leave: self.fab_state = "collapse"
+                on_release: app.ouvrir_dialogue_partager()
+                MDExtendedFabButtonIcon:
+                    icon: "share"
+                MDExtendedFabButtonText:
+                    text: "Partager"
 
         MDDivider:
             height: "2dp"
@@ -440,7 +410,7 @@ ScreenManager:
                 height: "2dp"
                 orientation: "vertical"
             MDLabel:
-                text: "N° de téléphone"
+                text: "Téléphone"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "left"
@@ -485,7 +455,7 @@ ScreenManager:
                 height: "2dp"
                 orientation: "vertical"
             MDLabel:
-                text: "Heure d'entrée"
+                text: "Entrée"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "center"
@@ -494,7 +464,7 @@ ScreenManager:
                 height: "2dp"
                 orientation: "vertical"
             MDLabel:
-                text: "Heure de sortie"
+                text: "Sortie"
                 bold: True
                 theme_text_color: "Primary"
                 halign: "center"
