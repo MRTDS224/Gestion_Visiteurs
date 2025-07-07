@@ -136,6 +136,8 @@ class HistoriqueScreen(MDScreen):
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.icon = "pictures/logo1.jpg"
+        self.title = "G-Entry"
         self.manager = VisitorManager()
         self.dialog = None
         self.data_table = None
