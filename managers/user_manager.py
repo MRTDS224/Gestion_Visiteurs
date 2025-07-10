@@ -5,7 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import IntegrityError
 from models.user import Base, User, PasswordResetToken
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 class UserManager:
     """
@@ -13,11 +15,11 @@ class UserManager:
     """
 
     def __init__(self, 
-        db_url: str = "postgresql+psycopg2://postgres:password@localhost/gestion_visiteurs",
-        smtp_server: str = "smtp.exemple.com",
-        smtp_port: int = 465,
-        smtp_username: str = "no-reply@exemple.com",
-        smtp_password: str = "votre_smtp_password"
+        db_url: str = os.environ.get("GESTION_DB_URL"),
+        smtp_server: str = os.environ.get("GESTION_SMTP_SERVER"),
+        smtp_port: int = int(os.environ.get("GESTION_SMTP_PORT", 465)),
+        smtp_username: str = os.environ.get("GESTION_SMTP_USERNAME"),
+        smtp_password: str = os.environ.get("GESTION_SMTP_PASSWORD")
         ):
         """
         Initialise la connexion à la base de données.
@@ -41,7 +43,7 @@ class UserManager:
         self.smtp_username = smtp_username
         self.smtp_password = smtp_password
 
-    def add_user(self, nom: str, prenom: str, email: str, password: str, structure: str, role: str = "utilisateur") -> User:
+    def add_user(self, nom: str, prenom: str, email: str, password: str, structure: str, role: str) -> User:
         """
         Crée et enregistre un nouvel utilisateur.
         Lève ValueError si l'email existe déjà.
@@ -84,14 +86,17 @@ class UserManager:
         finally:
             session.close()
 
-    def authenticate_user(self, email: str, password: str) -> bool:
+    def authenticate_user(self, email: str, password: str) -> User:
         """
         Vérifie qu'un utilisateur existe et que le mot de passe est valide.
         """
         user = self.get_user_by_email(email)
         if not user:
-            return False
-        return user.verify_password(password)
+            return None, f"L'email {email} est invalide, aucun compte avec cet email."
+        if user.verify_password(password):
+            return user, None
+        else:
+            return None, "Le mot de passe est incorrecte."
 
     def list_users(self) -> list[User]:
         """

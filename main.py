@@ -8,7 +8,7 @@ from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
-from kivymd.uix.snackbar import snackbar
+from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
 from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -16,13 +16,14 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.properties import StringProperty, BooleanProperty
 from kivy.metrics import dp
+from kivy.uix.screenmanager import SlideTransition
+from kivy.animation import Animation
 from managers.visitor_manager import VisitorManager
+from managers.user_manager import UserManager
 import os
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import urllib.parse
-from kivy.uix.screenmanager import SlideTransition
-from kivy.animation import Animation
 
 class VisitorRow(MDBoxLayout):
     selected = BooleanProperty(False)
@@ -40,10 +41,42 @@ class VisitorRow(MDBoxLayout):
     observation = StringProperty("")
 
 class LoginScreen(MDScreen):
-    pass
+    def login(self):
+        email = self.ids.login_email.text.rstrip()
+        password = self.ids.login_password.text.rstrip()
+        
+        if not email or not password:
+            MDApp.get_running_app().show_error_dialog("Tous les champs sont obligatoires.")
+            return
+        
+        MDApp.get_running_app().login(email, password)
 
 class SignupScreen(MDScreen):
-    pass
+    def signup(self):
+        last_name = self.ids.signup_last_name.text.rstrip()
+        first_name = self.ids.signup_last_name.text.rstrip()
+        email = self.ids.signup_email.text.rstrip()
+        password_first = self.ids.signup_password_first.text.rstrip()
+        password_second = self.ids.signup_password_second.text.rstrip()
+        role = self.ids.signup_role.text.rstrip().lower()
+        
+        if not all([last_name, first_name, email, password_first, password_second, role]):
+            MDApp.get_running_app().show_error_dialog("Tous les champs sont obligatoires.")
+            return
+            
+        if password_second != password_first:
+            MDApp.get_running_app().show_error_dialog("Les deux mots de passes doivent être identique.")
+            return
+        
+        if len(password_first) < 8:
+            MDApp.get_running_app().show_error_dialog("La longueur minimale du mot de passe est de 8 caractères.")
+            return
+        
+        if role not in ["huissier", "autre"]:
+            MDApp.get_running_app().show_error_dialog("Les rôles autorisés pour le moment sont soit Huissier ou soit Autre.")
+            return
+        
+        MDApp.get_running_app().signup(last_name, first_name, email, password_first, role.capitalize())
 
 class ResetPasswordScreen(MDScreen):
     pass
@@ -145,12 +178,14 @@ class HistoriqueScreen(MDScreen):
         self.ids.month_filter.text = ""
         self.ids.year_filter.text = ""
         MDApp.get_running_app().afficher_historique(date_filter, date_filter_type=date_filter_type)
+        
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.icon = "pictures/logo1.jpg"
         self.title = "G-Entry"
         self.manager = VisitorManager()
+        self.user_manager = UserManager()
         self.dialog = None
         self.data_table = None
         self.menu = None
@@ -554,7 +589,15 @@ class GestionVisiteursApp(MDApp):
         error_dialog.open()
         
     def show_info_snackbar(self, message):
-        snackbar(text=message, duration=2).open()
+        MDSnackbar(
+            MDSnackbarText(
+            text=message),
+            y=dp(24),
+            pos_hint={"center_x": 0.5},
+            size_hint_x=0.5,
+            duration=2,
+            background_color=self.theme_cls.onPrimaryContainerColor
+        ).open()
         
     def afficher_visiteurs(self, table_id, date_filter=None, date_filter_type=""):
         """Affiche les visiteurs dans la table spécifiée, avec un filtre de date optionnel."""
@@ -663,8 +706,29 @@ class GestionVisiteursApp(MDApp):
             )
         return "\n".join(lignes)
 
-    def login(self):
-        self.root.current = "accueil"
+    def login(self, email, password):
+        self.user, error = self.user_manager.authenticate_user(email, password)
+        
+        if error:
+            self.show_error_dialog(error)
+            return
+        
+        self.show_info_snackbar("Connexion réussie!")
+        self.root.current = "accueil" if self.user.role == "Huissier" else "historique"
+    
+    def signup(self, last_name, first_name, email, password_first, role):
+        try:
+            self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
+            self.show_info_snackbar("Connexion réussie.")
+            self.root.current = "acceuil" if self.user.role == "Huissier" else "historique"
+        except ValueError as e:
+            self.show_error_dialog(str(e))
+    
+    def send_reset_code(self):
+        pass
+    
+    def reset_password(self):
+        pass
         
 if __name__ == "__main__":
     GestionVisiteursApp().run()

@@ -44,7 +44,7 @@ ScreenManager:
 
             MDTextField:
                 id: login_email
-                size_hint_x: .5
+                size_hint_x: .7
                 pos_hint: {"center_x": 0.5}
                 validator: "email"
                 required: True
@@ -59,7 +59,7 @@ ScreenManager:
                 id: login_password
                 password: True
                 required: True
-                size_hint_x: .5
+                size_hint_x: .7
                 pos_hint: {"center_x": 0.5}
                 MDTextFieldHintText:
                     text: "Mot de passe"
@@ -84,7 +84,7 @@ ScreenManager:
             MDButton:
                 style: "elevated"
                 pos_hint: {"center_x": 0.5}
-                on_release: app.login()
+                on_release: root.login()
                 MDButtonText:
                     text: "Se connecter"
 
@@ -149,6 +149,8 @@ ScreenManager:
                     text: "Mot de passe"
                 MDTextFieldLeadingIcon:
                     icon: "eye-off"
+                MDTextFieldHelperText:
+                    text: "Minimum 8 caractères."
             MDTextField:
                 id: signup_password_second
                 size_hint_x: .6
@@ -171,12 +173,12 @@ ScreenManager:
                 MDTextFieldLeadingIcon:
                     icon: "account-cog"
                 MDTextFieldHelperText:
-                    text: "Huissier ou Autre"
+                    text: "Entrez Huissier ou Autre"
 
             MDButton:
                 style: "elevated"
                 pos_hint: {"center_x": 0.6}
-                on_release: app.signup()
+                on_release: root.signup()
                 MDButtonText:
                     text: "S’inscrire"
 
