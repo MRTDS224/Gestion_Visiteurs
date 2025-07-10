@@ -39,6 +39,18 @@ class VisitorRow(MDBoxLayout):
     exit_time = StringProperty("")
     observation = StringProperty("")
 
+class LoginScreen(MDScreen):
+    pass
+
+class SignupScreen(MDScreen):
+    pass
+
+class ResetPasswordScreen(MDScreen):
+    pass
+
+class CodeInputScreen(MDScreen):
+    pass
+
 class AccueilScreen(MDScreen):
     partager_visible = BooleanProperty(False)
     
@@ -200,9 +212,6 @@ class GestionVisiteursApp(MDApp):
     
     def exit_file_manager(self, *args):
         self.file_manager.close()
-        
-    def on_start(self):
-        self.afficher_table_visiteurs()
     
     def build(self):
         self.theme_cls.primary_palette = "Blue"
@@ -654,5 +663,8 @@ class GestionVisiteursApp(MDApp):
             )
         return "\n".join(lignes)
 
+    def login(self):
+        self.root.current = "accueil"
+        
 if __name__ == "__main__":
     GestionVisiteursApp().run()
