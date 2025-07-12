@@ -65,7 +65,7 @@ class SignupScreen(MDScreen):
             return
             
         if password_second != password_first:
-            MDApp.get_running_app().show_error_dialog("Les deux mots de passes doivent être identique.")
+            MDApp.get_running_app().show_error_dialog("Les deux mots de passes doivent être identiques.")
             return
         
         if len(password_first) < 8:
@@ -82,6 +82,9 @@ class ResetPasswordScreen(MDScreen):
     pass
 
 class CodeInputScreen(MDScreen):
+    pass
+
+class NewPasswordScreen(MDScreen):
     pass
 
 class AccueilScreen(MDScreen):
@@ -596,7 +599,7 @@ class GestionVisiteursApp(MDApp):
             pos_hint={"center_x": 0.5},
             size_hint_x=0.5,
             duration=2,
-            background_color=self.theme_cls.onPrimaryContainerColor
+            background_color="green"
         ).open()
         
     def afficher_visiteurs(self, table_id, date_filter=None, date_filter_type=""):
@@ -725,10 +728,57 @@ class GestionVisiteursApp(MDApp):
             self.show_error_dialog(str(e))
     
     def send_reset_code(self):
-        pass
+        email = self.root.get_screen("reset").ids.reset_email.text
+        
+        try:
+            self.token = self.user_manager.generate_reset_token(email)
+            self.root.current = "code_input"
+        except ValueError as e:
+            self.show_error_dialog(str(e))
+            self.root.get_screen("reset").ids.reset_email.text = ""
+    
+    def check_code(self):
+        token = self.root.get_screen("code_input").ids.reset_code.text
+        
+        if not token:
+            self.show_error_dialog("Veillez entrez le code reçu par mail.")
+            return
+        
+        if token != self.token:
+            self.show_error_dialog("Le code saisi est incorrecte. Veuillez réessayer.")
+            return
+        
+        self.root.current = "new_password"
+        self.root.get_screen("code_input").ids.reset_code.text = ""
     
     def reset_password(self):
-        pass
+        screen = self.root.get_screen("new_password")
+        new_password_first = screen.ids.new_password_first.text.rstrip()
+        new_password_second = screen.ids.new_password_second.text.rstrip()
+        
+        if not all([new_password_second, new_password_first]):
+            self.show_error_dialog("Veuillez remplir les deux champs avec un nouveau mot de passe.")
+        
+        if new_password_second != new_password_first:
+            self.show_error_dialog("Les deux mots de passes doivent être identiques.")
+            return
+        
+        if len(new_password_first) < 8:
+            self.show_error_dialog("La longueur minimale du mot de passe est de 8 caractères.")
+            return
+        
+        try:
+            self.user_manager.reset_password_with_token(self.token, new_password_first)
+            self.show_info_snackbar("Mot de passe rénitialisé avec succès!")
+            
+            screen.ids.new_password_first.text = ""
+            screen.ids.new_password_second.text = ""
+            self.root.get_screen("reset").ids.reset_email.text = ""
+            
+            self.root.current = "login"
+        except ValueError as e:
+            self.show_error_dialog(str(e))
+            self.root.current = "reset"
         
 if __name__ == "__main__":
     GestionVisiteursApp().run()

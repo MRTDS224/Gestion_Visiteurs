@@ -196,12 +196,10 @@ class UserManager:
             session.commit()
 
             # Envoyer le mail
-            link = f"https://ton-domaine.com/reset-password?token={reset.token}"
             body = (
                 f"Bonjour {user.prenom},\n\n"
                 "Vous demandez la réinitialisation de votre mot de passe.\n"
-                f"Utilisez ce code (ou lien) pour la réinitialisation :\n\n{reset.token}\n\n"
-                f"Ou cliquez ici : {link}\n\n"
+                f"Utilisez ce code pour la réinitialisation :\n\n{reset.token}\n\n"
                 "Ce code expire dans 1 heure.\n\n"
                 "Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce message."
             )
@@ -219,12 +217,12 @@ class UserManager:
         session = self.Session()
         try:
             reset = session.query(PasswordResetToken).filter_by(token=token).first()
-            if not reset or reset.expires_at < datetime.now(timezone.utc):
-                raise ValueError("Token invalide ou expiré.")
+            if not reset or reset.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+                raise ValueError("Code invalide ou expiré.")
 
             user = session.query(User).get(reset.user_id)
             if not user:
-                raise ValueError("Utilisateur introuvable pour ce token.")
+                raise ValueError("Utilisateur introuvable pour ce code.")
 
             # Met à jour le mot de passe
             user.set_password(new_password)

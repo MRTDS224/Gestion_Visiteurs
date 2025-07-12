@@ -20,6 +20,8 @@ ScreenManager:
         name: "reset"
     CodeInputScreen:
         name: "code_input"
+    NewPasswordScreen:
+        name: "new_password"
     AccueilScreen:
         name: "accueil"
     HistoriqueScreen:
@@ -44,7 +46,7 @@ ScreenManager:
 
             MDTextField:
                 id: login_email
-                size_hint_x: .7
+                size_hint_x: .6
                 pos_hint: {"center_x": 0.5}
                 validator: "email"
                 required: True
@@ -59,7 +61,7 @@ ScreenManager:
                 id: login_password
                 password: True
                 required: True
-                size_hint_x: .7
+                size_hint_x: .6
                 pos_hint: {"center_x": 0.5}
                 MDTextFieldHintText:
                     text: "Mot de passe"
@@ -246,6 +248,9 @@ ScreenManager:
         MDBoxLayout:
             orientation: "vertical"
             spacing: "10dp"
+            MDLabel:
+                text: "Entrez le code reçu par mail"
+                halign: "center"
             MDTextField:
                 id: reset_code
                 size_hint_x: .5
@@ -256,17 +261,66 @@ ScreenManager:
                 MDTextFieldHelperText:
                     mode: "on_error"
 
+            MDButton:
+                style: "elevated"
+                md_gb_color: "green"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.check_code()
+                MDButtonText:
+                    text: "Valider"
+            MDButton:
+                style: "outlined"
+                md_gb_color: "red"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.send_reset_code()
+                MDButtonText:
+                    text: "Renvoyer un nouveau code"
+            
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: root.manager.current = "login"
+                MDButtonText:
+                    text: "Retour à la connexion"
+
+<NewPasswordScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .5
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "green"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            MDLabel:
+                text: "Définissez un nouveau Mot de passe de 8 caractères au minimum"
+                halign: "center"
             MDTextField:
-                id: new_password
+                id: new_password_first
+                required: True
+                password: True
+                size_hint_x: .5
+                pos_hint: {"center_x": 0.5}
+                required: True
+                MDTextFieldHintText:
+                    text: "Nouveau mot de passe"
+
+            MDTextField:
+                id: new_password_second
                 required: True
                 password: True
                 size_hint_x: .5
                 pos_hint: {"center_x": 0.5}
                 MDTextFieldHintText:
-                    text: "Nouveau mot de passe"
+                    text: "Entrez le mot de passe encore"
 
             MDButton:
                 style: "elevated"
+                md_gb_color: "green"
                 pos_hint: {"center_x": 0.5}
                 on_release: app.reset_password()
                 MDButtonText:
@@ -274,6 +328,7 @@ ScreenManager:
             
             MDButton:
                 style: "text"
+                md_gb_color: "red"
                 pos_hint: {"center_x": 0.5}
                 on_release: root.manager.current = "login"
                 MDButtonText:
