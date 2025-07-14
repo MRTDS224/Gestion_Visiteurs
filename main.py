@@ -181,7 +181,76 @@ class HistoriqueScreen(MDScreen):
         self.ids.month_filter.text = ""
         self.ids.year_filter.text = ""
         MDApp.get_running_app().afficher_historique(date_filter, date_filter_type=date_filter_type)
+   
+class AccountScreen(MDScreen):
+    def enable_butons(self):
+        self.ids.btn_save.disabled = False
+        self.ids.btn_cancel.disabled = False
+
+    def on_enter(self):
+        self.populate_fields()
+
+    def populate_fields(self, user=None):
+        app = MDApp.get_running_app()
+        user = app.user
         
+        self.ids.account_last_name.text = user.nom or ""
+        self.ids.account_first_name.text = user.prenom or ""
+        self.ids.account_email.text = user.email or ""
+        self.ids.account_password_first.text = ""
+        self.ids.account_password_first.text = ""
+        self.ids.account_role.text = user.role or ""
+        
+        self.ids.btn_save.disabled = True
+        self.ids.btn_cancel.disabled = True
+
+        
+
+    def update_user(self):
+        nom     = self.ids.account_last_name.text.strip()
+        prenom  = self.ids.account_first_name.text.strip()
+        email   = self.ids.account_email.text.strip()
+        pwd1    = self.ids.account_password_first.text.strip()
+        pwd2    = self.ids.account_password_second.text.strip()
+        role    = self.ids.account_role.text.strip()
+        
+        
+        if pwd1 or pwd2:
+            if pwd1 != pwd2:
+                return self.show_error_dialog("Les mots de passe doivent être identiques.")
+            if len(pwd1) < 8:
+                return self.show_error_dialog("Le mot de passe doit faire au moins 8 caractères.")
+        
+        params = {}
+        app = MDApp.get_running_app()
+        user = app.user
+        
+        if nom and nom != user.nom:
+            params["nom"] = nom
+        if prenom and prenom != user.prenom:
+            params["prenom"] = prenom
+        if email and email != user.email:
+            params["email"] = email
+        if pwd1:
+            params["password"] = pwd1
+        if role and role != user.role:
+            params["role"] = role
+        
+        if not params:
+            return self.show_info_snackbar("Aucune modification détectée.")
+
+        # Appel au UserManager (décompactage des kwargs)
+        try:
+            app.user_manager.update_user(user.id, **params)
+            app.show_info_snackbar("Profil mis à jour avec succès.")
+            # On recharge l’affichage et on désactive à nouveau
+            self.populate_fields()
+        except ValueError as e:
+            app.show_error_dialog(str(e))
+    
+    def annuler_modification_utilisateur(self):
+        self.populate_fields()
+       
 class GestionVisiteursApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -779,6 +848,6 @@ class GestionVisiteursApp(MDApp):
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"
-        
+      
 if __name__ == "__main__":
     GestionVisiteursApp().run()

@@ -26,6 +26,8 @@ ScreenManager:
         name: "accueil"
     HistoriqueScreen:
         name: "historique"
+    AccountScreen:
+        name: "account"
 
 <LoginScreen>:
     MDCard:
@@ -457,6 +459,15 @@ ScreenManager:
                     icon: "share"
                 MDExtendedFabButtonText:
                     text: "Partager"
+            MDIconButton:
+                icon: "account"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "white"
+                theme_icon_color: "Custom"
+                icon_color: "black"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.root.current = "account"
         
         MDDivider:
             height: "2dp"
@@ -663,7 +674,7 @@ ScreenManager:
                 icon: "home"
                 style: "tonal"
                 theme_bg_color: "Custom"
-                md_bg_color: "brown"
+                md_bg_color: "red"
                 theme_icon_color: "Custom"
                 icon_color: "white"
                 pos_hint: {"center_y": 0.5}
@@ -680,6 +691,15 @@ ScreenManager:
                     icon: "share"
                 MDExtendedFabButtonText:
                     text: "Partager"
+            MDIconButton:
+                icon: "account"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "white"
+                theme_icon_color: "Custom"
+                icon_color: "black"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.root.current = "account"
 
         MDDivider:
             height: "2dp"
@@ -811,3 +831,137 @@ ScreenManager:
 
         VisitorTable:
             id: historique_table
+
+<AccountScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: "20dp"
+        spacing: "20dp"
+        MDLabel:
+            text: "Bienvenue dans la gestion de votre compte"
+            font_style: "Title"
+            halign: "center"
+            valign: "middle"
+            bold: True
+        MDGridLayout:
+            id: box
+            cols: 2
+            spacing: "12dp"
+            padding: "12dp"
+            adaptive_height: True
+            size_hint_x: .7
+
+            MDLabel:
+                text: "Nom"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_last_name
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
+            
+            MDLabel:
+                text: "Prenom"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_first_name
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
+
+            MDLabel:
+                text: "Email"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_email
+                validator: "email"
+                required: True
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                on_text: root.enable_butons()
+
+            MDLabel:
+                text: "Rôle"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_role
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
+
+            MDLabel:
+                text: "Mot de passe"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_password_first
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+
+            MDLabel:
+                text: "Mot de passe à nouveau"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_password_second
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+            
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            padding: "20dp"
+            spacing: "20dp"
+            
+            MDButton:
+                id: btn_cancel
+                style: "text"
+                disabled: True
+                on_release: root.annuler_modification_utilisateur()
+                MDButtonText:
+                    text: "Annuler"
+                MDButtonIcon:
+                    icon: "cancel-save"
+            MDButton:
+                id: btn_save
+                style: "elevated"
+                disabled: True
+                on_release: root.update_user()
+                MDButtonText:
+                    text: "Sauvegarder"
+                MDButtonIcon:
+                    icon: "content-save"
+        
+        MDButton:
+            style: "text"
+            on_release: root.manager.current = "accueil"
+            MDButtonText:
+                text: "Annuler"
+            MDButtonIcon:
+                icon: "arrow-left"
+
