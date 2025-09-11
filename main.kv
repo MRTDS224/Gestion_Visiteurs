@@ -53,7 +53,6 @@
                 mode: "outlined"
                 size_hint: 0.23, None
                 height: dp(48)
-                focus: True
                 on_focus: if self.focus: app.open_menu("year_filter")
                 MDTextFieldHintText:
                     text: "Années"
@@ -62,7 +61,6 @@
                 mode: "outlined"
                 size_hint: 0.2, None
                 height: dp(48)
-                focus: True
                 on_focus: if self.focus: app.open_menu("month_filter")
                 MDTextFieldHintText:
                     text: "Mois"
@@ -71,7 +69,6 @@
                 mode: "outlined"
                 size_hint: 0.2, None
                 height: dp(48)
-                focus: True
                 on_focus: if self.focus: app.open_menu("day_filter")
                 MDTextFieldHintText:
                     text: "Jours"
@@ -433,6 +430,251 @@
                 icon: "logout"
 
 #
+<SignupScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .9
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "yellow"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+
+            MDLabel:
+                text: "INSCRIPTION"
+                halign: "center"
+
+            MDTextField:
+                id: signup_last_name
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                required: True
+                MDTextFieldHintText:
+                    text: "Nom"
+                MDTextFieldLeadingIcon:
+                    icon: "account"
+            
+            MDTextField:
+                id: signup_first_name
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                required: True
+                MDTextFieldHintText:
+                    text: "Prenom"
+                MDTextFieldLeadingIcon:
+                    icon: "account"
+
+            MDTextField:
+                id: signup_email
+                validator: "email"
+                required: True
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                MDTextFieldHintText:
+                    text: "Email"
+                MDTextFieldHelperText:
+                    mode: "on_error"
+                MDTextFieldLeadingIcon:
+                    icon: "email"
+
+            MDTextField:
+                id: signup_password_first
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                password: True
+                required: True
+                MDTextFieldHintText:
+                    text: "Mot de passe"
+                MDTextFieldLeadingIcon:
+                    icon: "eye-off"
+                MDTextFieldHelperText:
+                    text: "Minimum 8 caractères."
+            MDTextField:
+                id: signup_password_second
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                password: True
+                required: True
+                MDTextFieldHintText:
+                    text: "Mot de passe à nouveau"
+                MDTextFieldLeadingIcon:
+                    icon: "eye-off"
+            
+            MDTextField:
+                id: signup_role
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                password: True
+                required: True
+                MDTextFieldHintText:
+                    text: "Rôle"
+                MDTextFieldLeadingIcon:
+                    icon: "account-cog"
+                MDTextFieldHelperText:
+                    text: "Entrez Huissier ou Autre"
+
+            MDButton:
+                style: "elevated"
+                pos_hint: {"center_x": 0.6}
+                on_release: root.signup()
+                MDButtonText:
+                    text: "S’inscrire"
+
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.go_to_login()
+                MDButtonText:
+                    text: "Déjà inscrit ? Se connecter"
+
+
+<ResetPasswordScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .5
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "green"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            MDLabel:
+                text: "RÉINITIALISER LE MOT DE PASSE"
+                halign: "center"
+
+            MDTextField:
+                id: reset_email
+                validator: "email"
+                required: True
+                size_hint_x: .5
+                pos_hint: {"center_x": 0.5}
+                MDTextFieldHintText:
+                    text: "Votre email"
+                MDTextFieldHelperText:
+                    mode: "on_error"
+                MDTextFieldLeadingIcon:
+                    icon: "email"
+
+            MDButton:
+                style: "elevated"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.send_reset_code()
+                MDButtonText:
+                    text: "Envoyer le code"
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.go_to_login()
+                MDButtonText:
+                    text: "Vous rappelez ? Se connecter"
+
+<CodeInputScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .5
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "green"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            MDLabel:
+                text: "Entrez le code reçu par mail"
+                halign: "center"
+            MDTextField:
+                id: reset_code
+                size_hint_x: .5
+                pos_hint: {"center_x": 0.5}
+                required: True
+                MDTextFieldHintText:
+                    text: "Code reçu par mail"
+                MDTextFieldHelperText:
+                    mode: "on_error"
+
+            MDButton:
+                style: "elevated"
+                md_gb_color: "green"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.check_code()
+                MDButtonText:
+                    text: "Valider"
+            MDButton:
+                style: "outlined"
+                md_gb_color: "red"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.send_reset_code()
+                MDButtonText:
+                    text: "Renvoyer un nouveau code"
+            
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.go_to_login()
+                MDButtonText:
+                    text: "Retour à la connexion"
+
+<NewPasswordScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .5
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "green"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            MDLabel:
+                text: "Définissez un nouveau Mot de passe de 8 caractères au minimum"
+                halign: "center"
+            MDTextField:
+                id: new_password_first
+                required: True
+                password: True
+                size_hint_x: .5
+                pos_hint: {"center_x": 0.5}
+                required: True
+                MDTextFieldHintText:
+                    text: "Nouveau mot de passe"
+
+            MDTextField:
+                id: new_password_second
+                required: True
+                password: True
+                size_hint_x: .5
+                pos_hint: {"center_x": 0.5}
+                MDTextFieldHintText:
+                    text: "Entrez le mot de passe encore"
+
+            MDButton:
+                style: "elevated"
+                md_gb_color: "green"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.reset_password()
+                MDButtonText:
+                    text: "Valider"
+            
+            MDButton:
+                style: "text"
+                md_gb_color: "red"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.go_to_login()
+                MDButtonText:
+                    text: "Retour à la connexion"
+
+#
 MDScreenManager:
     md_bg_color: self.theme_cls.backgroundColor
     MainScreen:
@@ -441,5 +683,13 @@ MDScreenManager:
         name: "screen B"
     AccountScreen:
         name: "account"
+    SignupScreen:
+        name: "signup"
+    ResetPasswordScreen:
+        name: "reset"
+    CodeInputScreen:
+        name: "code_input"
+    NewPasswordScreen:
+        name: "new_password"
 
 #

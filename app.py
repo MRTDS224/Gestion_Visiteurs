@@ -28,7 +28,6 @@ from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import urllib.parse
 
-
 class HeroItem(MDHeroFrom):
     visiteur = ObjectProperty()
     manager = ObjectProperty()
@@ -152,7 +151,43 @@ class AccountScreen(MDScreen):
         
         app = MDApp.get_running_app()
         app.root.transition = app.old_transition
-     
+
+class SignupScreen(MDScreen):
+    def signup(self):
+        last_name = self.ids.signup_last_name.text.rstrip()
+        first_name = self.ids.signup_last_name.text.rstrip()
+        email = self.ids.signup_email.text.rstrip()
+        password_first = self.ids.signup_password_first.text.rstrip()
+        password_second = self.ids.signup_password_second.text.rstrip()
+        role = self.ids.signup_role.text.rstrip().lower()
+        
+        if not all([last_name, first_name, email, password_first, password_second, role]):
+            MDApp.get_running_app().show_error_dialog("Tous les champs sont obligatoires.")
+            return
+            
+        if password_second != password_first:
+            MDApp.get_running_app().show_error_dialog("Les deux mots de passes doivent être identiques.")
+            return
+        
+        if len(password_first) < 8:
+            MDApp.get_running_app().show_error_dialog("La longueur minimale du mot de passe est de 8 caractères.")
+            return
+        
+        if role not in ["huissier", "autre"]:
+            MDApp.get_running_app().show_error_dialog("Les rôles autorisés pour le moment sont soit Huissier ou soit Autre.")
+            return
+        
+        MDApp.get_running_app().signup(last_name, first_name, email, password_first, role.capitalize())
+
+class ResetPasswordScreen(MDScreen):
+    pass
+
+class CodeInputScreen(MDScreen):
+    pass
+
+class NewPasswordScreen(MDScreen):
+    pass
+   
 class Gestion(MDApp):
     visiteur = ObjectProperty()
     def __init__(self, **kwargs):
@@ -297,7 +332,7 @@ class Gestion(MDApp):
         if icone:
             elements.append(MDButtonIcon(icon=icone))
         elements.append(MDButtonText(text=texte))
-        kwargs = {"style": style}
+        kwargs = {"style": style, "size_hint": (None, None), "height": dp(40)}
 
         def _on_release(instance):
             self.animer_bouton(instance)
@@ -478,7 +513,14 @@ class Gestion(MDApp):
     
     def go_to_login(self):
         self.root.current = "screen A"
+        self.root.transition = self.old_transition
         self.ouvrir_dialogue_login()
+        
+    def go_to_screen(self, screen_name):
+        self.old_transition = self.root.transition
+        self.root.transition = SlideTransition()
+        self.root.current = screen_name
+        self.dialog.dismiss()
         
     def login(self, email, password):
         if not email or not password:
@@ -582,16 +624,33 @@ class Gestion(MDApp):
             orientation="vertical",
             spacing=20,
             padding=10,
-            adaptive_height=True
+            adaptive_height=True,
+            
         )
         email_field = self.create_text_field("Entrez votre email", icon="email")
         email_field.required = True
+        email_field.pos_hint = {"center_x": 0.5}
         password_field = self.create_text_field("Entrez votre mot de passe", icon="lock")
         password_field.password = True
         password_field.required = True
+        password_field.pos_hint = {"center_x": 0.5}
+        
+        button_reset = self.creer_bouton(
+            "Mot de passe oublié?",
+            on_release=lambda x: self.go_to_screen("reset")
+        )
+        button_reset.pos_hint = {"center_x": 0.5}
+        
+        button_forgot = self.creer_bouton(
+            "Créer un compte",
+            on_release=lambda x: self.go_to_screen("signup")
+        )
+        button_forgot.pos_hint = {"center_x": 0.5}
         
         content.add_widget(email_field)
         content.add_widget(password_field)
+        content.add_widget(button_reset)
+        content.add_widget(button_forgot)
         
         actions = [
             Widget(),
@@ -692,7 +751,8 @@ class Gestion(MDApp):
         try:
             self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
-            self.root.current = "acceuil" if self.user.role == "Huissier" else "historique"
+            self.root.current = "screen A"
+            self.root.transition = self.old_transition
         except ValueError as e:
             self.show_error_dialog(str(e))
             
