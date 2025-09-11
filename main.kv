@@ -1,4 +1,6 @@
 #:kivy 2.3.1
+#:import SlideTransition kivy.uix.screenmanager.SlideTransition
+#:import dp kivy.metrics.dp
 <HeroItem>
     size_hint_y: None
     height: "200dp"
@@ -29,260 +31,415 @@
                 text_color: "white"
                 adaptive_height: True
 
-
-MDScreenManager:
-    md_bg_color: self.theme_cls.backgroundColor
-
-    MDScreen:
-        name: "screen A"
+#
+<MainScreen>:
+    MDBoxLayout:
+        orientation: 'vertical'
+        padding: dp(16)
         MDBoxLayout:
-            orientation: 'vertical'
+            orientation: 'horizontal'
+            size_hint_y: 0.1
+            spacing: dp(16)
             padding: dp(16)
-            MDBoxLayout:
-                orientation: 'horizontal'
-                size_hint_y: 0.1
-                spacing: dp(16)
-                padding: dp(16)
-                MDLabel:
-                    text: "Liste des visiteurs du jour"
-                    font_style: "Title"
-                    halign: "left"
-                    valign: "middle"
-                    bold: True
-                
-                MDTextField:
-                    id: year_filter
-                    mode: "outlined"
-                    size_hint: 0.23, None
-                    height: dp(48)
-                    focus: True
-                    on_focus: if self.focus: app.open_menu("year_filter")
-                    MDTextFieldHintText:
-                        text: "Années"
-                MDTextField:
-                    id: month_filter
-                    mode: "outlined"
-                    size_hint: 0.2, None
-                    height: dp(48)
-                    focus: True
-                    on_focus: if self.focus: app.open_menu("month_filter")
-                    MDTextFieldHintText:
-                        text: "Mois"
-                MDTextField:
-                    id: day_filter
-                    mode: "outlined"
-                    size_hint: 0.2, None
-                    height: dp(48)
-                    focus: True
-                    on_focus: if self.focus: app.open_menu("day_filter")
-                    MDTextFieldHintText:
-                        text: "Jours"
+            MDLabel:
+                text: "Liste des visiteurs du jour"
+                font_style: "Title"
+                halign: "left"
+                valign: "middle"
+                bold: True
+            
+            MDTextField:
+                id: year_filter
+                mode: "outlined"
+                size_hint: 0.23, None
+                height: dp(48)
+                focus: True
+                on_focus: if self.focus: app.open_menu("year_filter")
+                MDTextFieldHintText:
+                    text: "Années"
+            MDTextField:
+                id: month_filter
+                mode: "outlined"
+                size_hint: 0.2, None
+                height: dp(48)
+                focus: True
+                on_focus: if self.focus: app.open_menu("month_filter")
+                MDTextFieldHintText:
+                    text: "Mois"
+            MDTextField:
+                id: day_filter
+                mode: "outlined"
+                size_hint: 0.2, None
+                height: dp(48)
+                focus: True
+                on_focus: if self.focus: app.open_menu("day_filter")
+                MDTextFieldHintText:
+                    text: "Jours"
 
-                MDIconButton:
-                    icon: "filter"
-                    style: "tonal"
-                    theme_bg_color: "Custom"
-                    md_bg_color: "blue"
-                    theme_icon_color: "Custom"
-                    icon_color: "white"
-                    pos_hint: {"center_y": 0.5}
-                    on_release: app.filtrer(year_filter.text, month_filter.text, day_filter.text)
+            MDIconButton:
+                icon: "filter"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "blue"
+                theme_icon_color: "Custom"
+                icon_color: "white"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.filtrer(year_filter.text, month_filter.text, day_filter.text)
 
-                MDIconButton:
-                    icon: "reload"
-                    style: "tonal"
-                    theme_bg_color: "Custom"
-                    md_bg_color: "green"
-                    theme_icon_color: "Custom"
-                    icon_color: "white"
-                    pos_hint: {"center_y": 0.5}
-                    on_release: app.renitialiser_filtre()
+            MDIconButton:
+                icon: "reload"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "green"
+                theme_icon_color: "Custom"
+                icon_color: "white"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.renitialiser_filtre()
 
-                MDExtendedFabButton:
-                    id: add_visitor_btn
-                    height: dp(48)
-                    pos_hint: {"center_y": 0.5}
-                    on_enter: self.fab_state = "expand"
-                    on_leave: self.fab_state = "collapse"
-                    on_release: app.ouvrir_dialogue_ajout_visiteur()
-                    MDExtendedFabButtonIcon:
-                        icon: "account-plus"
-                    MDExtendedFabButtonText:
-                        text: "Ajouter un visiteur"
-                MDIconButton:
-                    icon: "account"
-                    style: "tonal"
-                    theme_bg_color: "Custom"
-                    md_bg_color: "white"
-                    theme_icon_color: "Custom"
-                    icon_color: "black"
-                    pos_hint: {"center_y": 0.5}
-                    on_release: app.root.current = "account"
+            MDExtendedFabButton:
+                id: add_visitor_btn
+                height: dp(48)
+                pos_hint: {"center_y": 0.5}
+                on_enter: self.fab_state = "expand"
+                on_leave: self.fab_state = "collapse"
+                on_release: app.ouvrir_dialogue_ajout_visiteur()
+                MDExtendedFabButtonIcon:
+                    icon: "account-plus"
+                MDExtendedFabButtonText:
+                    text: "Ajouter un visiteur"
+            MDIconButton:
+                icon: "account"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "white"
+                theme_icon_color: "Custom"
+                icon_color: "black"
+                pos_hint: {"center_y": 0.5}
+                on_release: 
+                    app.go_to_account()
 
-            ScrollView:
+        ScrollView:
 
-                MDGridLayout:
-                    id: box
-                    cols: 6
-                    spacing: "12dp"
-                    padding: "12dp"
-                    adaptive_height: True
+            MDGridLayout:
+                id: box
+                cols: 6
+                spacing: "12dp"
+                padding: "12dp"
+                adaptive_height: True
 
-    MDScreen:
-        name: "screen B"
-        heroes_to: [hero_to]
+#
+<DetailScreen>:
+    heroes_to: [hero_to]
+    
+    MDTopAppBar:
+        type: "small"
+        pos_hint: {"top": 1}
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDTopAppBarLeadingButtonContainer:
+
+            MDActionTopAppBarButton:
+                icon: "arrow-left"
+                on_release:
+                    root.current_heroes = [hero_to.tag]
+                    root.manager.current = "screen A"
+
+        MDTopAppBarTitle:
+            text: "Les informations du visiteur"
+            halign: "center"
+
+        MDTopAppBarTrailingButtonContainer:
+
+            MDActionTopAppBarButton:
+                id: btn_save
+                icon: "content-save"
+                disabled: True
+                on_release: app.enregistrer_modifications()
+            MDActionTopAppBarButton:
+                id: btn_cancel
+                icon: "cancel"
+                disabled: True
+                on_release: app.annuler_modifications()
+            MDActionTopAppBarButton:
+                icon: "share"
+                on_release: app.ouvrir_dialogue_partager()
+    MDBoxLayout:
+        orientation: 'vertical'
+        padding: "20dp"
+        spacing: "20dp"
+        size_hint: .3, .5
+        pos_hint: {"top": .9}
+        MDHeroTo:
+            id: hero_to
+        MDButton:
+            style: "outlined"
+            on_release: app.open_filechooser()
+            MDButtonText:
+                text: "Modifier  l'image"
+            MDButtonIcon:
+                icon: "pencil"
+    
+    MDGridLayout:
+        cols: 2
+        size_hint_x: .6 
+        pos_hint: {"top": .93, "x": .4}
+        spacing: "10dp"
+        padding: "20dp"
+        adaptive_height: True
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Nom"
+        MDTextField:
+            id: nom
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            text: "Prenom"
+            height : dp(40)
+        MDTextField:
+            id: prenom
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
         
-        MDTopAppBar:
-            type: "small"
-            pos_hint: {"top": 1}
-            md_bg_color: self.theme_cls.backgroundColor
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Numéro de Téléphone"    
+        MDTextField:
+            id: phone_number
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+        
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Type de la carte"
+        MDTextField:
+            id: id_type
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Numéro de la carte"
+        MDTextField:
+            id: id_number
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Le motif"  
+        MDTextField:
+            id: motif
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "La date"
+        MDTextField:
+            id: date
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Heure d'arrivée" 
+        MDTextField:
+            id: arrival_time
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+        
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Heure de sortie"    
+        MDTextField:
+            id: exit_time
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
+            
+        MDLabel:
+            size_hint: .4, None
+            height : dp(40)
+            text: "Observation" 
+        MDTextField:
+            id: observation
+            on_text: app.activer_boutons_modification()
+            size_hint: .6, None
+            height : dp(40)
 
-            MDTopAppBarLeadingButtonContainer:
+#
+<AccountScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: "20dp"
+        spacing: "20dp"
+        MDLabel:
+            text: "Bienvenue dans la gestion de votre compte"
+            font_style: "Title"
+            halign: "center"
+            valign: "middle"
+            bold: True
+        MDGridLayout:
+            id: box
+            cols: 2
+            spacing: "12dp"
+            padding: "12dp"
+            adaptive_height: True
+            size_hint_x: .7
 
-                MDActionTopAppBarButton:
-                    icon: "arrow-left"
-                    on_release:
-                        root.current_heroes = [hero_to.tag]
-                        root.current = "screen A"
+            MDLabel:
+                text: "Nom"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_last_name
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
+            
+            MDLabel:
+                text: "Prenom"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_first_name
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
 
-            MDTopAppBarTitle:
-                text: "Les informations du visiteur"
-                halign: "center"
+            MDLabel:
+                text: "Email"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_email
+                validator: "email"
+                required: True
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                on_text: root.enable_butons()
 
-            MDTopAppBarTrailingButtonContainer:
+            MDLabel:
+                text: "Rôle"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_role
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                required: True
+                on_text: root.enable_butons()
 
-                MDActionTopAppBarButton:
-                    id: btn_save
-                    icon: "content-save"
-                    disabled: True
-                    on_release: app.enregistrer_modifications()
-                MDActionTopAppBarButton:
-                    id: btn_cancel
-                    icon: "cancel"
-                    disabled: True
-                    on_release: app.annuler_modifications()
-                MDActionTopAppBarButton:
-                    icon: "share"
-                    on_release: app.ouvrir_dialogue_partager()
+            MDLabel:
+                text: "Mot de passe"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_password_first
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+
+            MDLabel:
+                text: "Mot de passe à nouveau"
+                size_hint_x: .4
+                size_hint_y: None
+                height: dp(40)
+            MDTextField:
+                id: account_password_second
+                size_hint_x: .6
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+            
+
         MDBoxLayout:
-            orientation: 'vertical'
+            orientation: "horizontal"
             padding: "20dp"
             spacing: "20dp"
-            size_hint: .3, .5
-            pos_hint: {"top": .9}
-            MDHeroTo:
-                id: hero_to
+            
             MDButton:
-                style: "outlined"
-                on_release: app.open_filechooser()
+                id: btn_cancel
+                style: "text"
+                disabled: True
+                on_release: root.annuler_modification_utilisateur()
                 MDButtonText:
-                    text: "Modifier  l'image"
+                    text: "Annuler"
                 MDButtonIcon:
-                    icon: "pencil"
+                    icon: "cancel-save"
+            MDButton:
+                id: btn_save
+                style: "elevated"
+                disabled: True
+                on_release: root.update_user()
+                MDButtonText:
+                    text: "Sauvegarder"
+                MDButtonIcon:
+                    icon: "content-save"
         
-        MDGridLayout:
-            cols: 2
-            size_hint_x: .6 
-            pos_hint: {"top": .93, "x": .4}
-            spacing: "10dp"
-            padding: "20dp"
-            adaptive_height: True
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Nom"
-            MDTextField:
-                id: nom
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-                
-            MDLabel:
-                size_hint: .4, None
-                text: "Prenom"
-                height : dp(40)
-            MDTextField:
-                id: prenom
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-            
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Numéro de Téléphone"    
-            MDTextField:
-                id: phone_number
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-            
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Type de la carte"
-            MDTextField:
-                id: id_type
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-                
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Numéro de la carte"
-            MDTextField:
-                id: id_number
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-              
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Le motif"  
-            MDTextField:
-                id: motif
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-               
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "La date"
-            MDTextField:
-                id: date
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-               
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Heure d'arrivée" 
-            MDTextField:
-                id: arrival_time
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-            
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Heure de sortie"    
-            MDTextField:
-                id: exit_time
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
-              
-            MDLabel:
-                size_hint: .4, None
-                height : dp(40)
-                text: "Observation" 
-            MDTextField:
-                id: observation
-                on_text: app.activer_boutons_modification()
-                size_hint: .6, None
-                height : dp(40)
+        MDButton:
+            style: "text"
+            on_release: 
+                root.manager.current = "screen A"
+            MDButtonText:
+                text: "Annuler"
+            MDButtonIcon:
+                icon: "arrow-left"
+        
+        MDButton:
+            style: "outlined"
+            pos_hint: {"center_x": 0.5}
+            md_bg_color: "red"
+            text_color: "white"
+            on_release: app.go_to_login()
+            MDButtonText:
+                text: "Deconnexion"
+            MDButtonIcon:
+                icon: "logout"
+
+#
+MDScreenManager:
+    md_bg_color: self.theme_cls.backgroundColor
+    MainScreen:
+        name: "screen A"
+    DetailScreen:
+        name: "screen B"
+    AccountScreen:
+        name: "account"
+
+#

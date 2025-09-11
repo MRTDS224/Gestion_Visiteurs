@@ -9,7 +9,7 @@ from kivymd.uix.hero import MDHeroFrom
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
 from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon
-from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
+from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLeadingIcon
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.menu import MDDropdownMenu
@@ -61,14 +61,98 @@ class HeroItem(MDHeroFrom):
             MDApp.get_running_app().visiteur = self.visiteur
             
             self.manager.current_heroes = [self.tag]
-            self.manager.ids.hero_to.tag = self.tag
+            self.manager.get_screen("screen B").ids.hero_to.tag = self.tag
             self.manager.current = "screen B"
             
             MDApp.get_running_app().remplir_champs()
 
         Clock.schedule_once(switch_screen, 0.2)
 
+class MainScreen(MDScreen):
+    pass
 
+class DetailScreen(MDScreen):
+    pass
+   
+class AccountScreen(MDScreen):
+    def enable_butons(self):
+        self.ids.btn_save.disabled = False
+        self.ids.btn_cancel.disabled = False
+
+    def on_enter(self):
+        self.populate_fields()
+
+    def populate_fields(self, user=None):
+        app = MDApp.get_running_app()
+        user = app.user
+        
+        self.ids.account_last_name.text = user.nom or ""
+        self.ids.account_first_name.text = user.prenom or ""
+        self.ids.account_email.text = user.email or ""
+        self.ids.account_password_first.text = ""
+        self.ids.account_password_first.text = ""
+        self.ids.account_role.text = user.role or ""
+        
+        self.ids.btn_save.disabled = True
+        self.ids.btn_cancel.disabled = True
+
+    def update_user(self):
+        nom     = self.ids.account_last_name.text.strip()
+        prenom  = self.ids.account_first_name.text.strip()
+        email   = self.ids.account_email.text.strip()
+        pwd1    = self.ids.account_password_first.text.strip()
+        pwd2    = self.ids.account_password_second.text.strip()
+        role    = self.ids.account_role.text.strip()
+        
+        
+        if pwd1 or pwd2:
+            if pwd1 != pwd2:
+                return self.show_error_dialog("Les mots de passe doivent être identiques.")
+            if len(pwd1) < 8:
+                return self.show_error_dialog("Le mot de passe doit faire au moins 8 caractères.")
+        
+        params = {}
+        app = MDApp.get_running_app()
+        user = app.user
+        
+        if nom and nom != user.nom:
+            params["nom"] = nom
+        if prenom and prenom != user.prenom:
+            params["prenom"] = prenom
+        if email and email != user.email:
+            params["email"] = email
+        if pwd1:
+            params["password"] = pwd1
+        if role and role != user.role:
+            params["role"] = role
+        
+        if not params:
+            return self.show_info_snackbar("Aucune modification détectée.")
+
+        # Appel au UserManager (décompactage des kwargs)
+        try:
+            app.user_manager.update_user(user.id, **params)
+            app.user = app.user_manager.get_user_by_email(email)
+            app.show_info_snackbar("Profil mis à jour avec succès.")
+            # On recharge l’affichage et on désactive à nouveau
+            self.populate_fields()
+        except ValueError as e:
+            app.show_error_dialog(str(e))
+    
+    def annuler_modification_utilisateur(self):
+        self.populate_fields()
+
+    def on_leave(self, *args):
+        self.ids.account_last_name.text = ""
+        self.ids.account_first_name.text = ""
+        self.ids.account_email.text = ""
+        self.ids.account_password_first.text = ""
+        self.ids.account_password_second.text = ""
+        self.ids.account_role.text = ""
+        
+        app = MDApp.get_running_app()
+        app.root.transition = app.old_transition
+     
 class Gestion(MDApp):
     visiteur = ObjectProperty()
     def __init__(self, **kwargs):
@@ -78,8 +162,8 @@ class Gestion(MDApp):
         self.title = "G-Entry"
         self.user_manager = UserManager()
         self.dialog = None
-        self.data_table = None
         self.menu = None
+        self.user = None
         self.file_manager = MDFileManager(
             exit_manager=self.exit_file_manager,
             select_path=self.select_file,
@@ -92,11 +176,12 @@ class Gestion(MDApp):
         )
         
     def activer_boutons_modification(self):
-        self.root.ids.btn_cancel.disabled = False
-        self.root.ids.btn_save.disabled = False
+        screen = self.root.get_screen("screen B")
+        screen.ids.btn_cancel.disabled = False
+        screen.ids.btn_save.disabled = False
     
     def afficher_heros_visiteurs(self, visiteurs=None):
-        box = self.root.ids.box
+        box = self.root.get_screen("screen A").ids.box
         box.clear_widgets()
         
         if visiteurs is None:
@@ -121,8 +206,9 @@ class Gestion(MDApp):
     def annuler_modifications(self):
         self.remplir_champs()
         
-        self.root.ids.btn_save.disabled = True
-        self.root.ids.btn_cancel.disabled = True
+        screen = self.root.get_screen("screen B")
+        screen.ids.btn_save.disabled = True
+        screen.ids.btn_cancel.disabled = True
         
     def build(self):
         return Builder.load_file("main.kv")
@@ -191,14 +277,19 @@ class Gestion(MDApp):
         self.root.current = "new_password"
         self.root.get_screen("code_input").ids.reset_code.text = ""
         
-    def create_text_field(self, hint, required=True):
-        return MDTextField(
+    def create_text_field(self, hint, icon=None, required=True):
+        field = MDTextField(
             MDTextFieldHintText(text=hint),
             required=required,
             mode="outlined",
             size_hint_x=None,
             width="300dp",
         )
+        
+        if icon:
+            field.add_widget(MDTextFieldLeadingIcon(icon=icon))
+
+        return field
         
     def creer_bouton(self, texte, style="text", icone=None, on_release=None):
         """Crée un bouton MDButton avec texte, style, icône et callback."""
@@ -233,22 +324,30 @@ class Gestion(MDApp):
             )
         )
         dialog.auto_dismiss = False
+        
+        if titre == "Connexion":
+            self.root.opacity = 0.1
+            dialog.bind(on_dismiss=lambda *args: setattr(self.root, 'opacity', 1))
+
+            
         dialog.open()
         return dialog
     
     def enregistrer_modifications(self):
         try:
+            screen = self.root.get_screen("screen B")
+            
             image = self.selected_image_path if self.selected_image_path else self.visiteur.image_path
-            nom = self.root.ids.nom.text
-            prenom = self.root.ids.prenom.text
-            phone_number = self.root.ids.phone_number.text
-            id_type = self.root.ids.id_type.text
-            id_number = self.root.ids.id_number.text
-            motif = self.root.ids.motif.text
-            date = self.root.ids.date.text
-            arrival_time = self.root.ids.arrival_time.text
-            exit_time = self.root.ids.exit_time.text
-            observation = self.root.ids.observation.text
+            nom = screen.ids.nom.text
+            prenom = screen.ids.prenom.text
+            phone_number = screen.ids.phone_number.text
+            id_type = screen.ids.id_type.text
+            id_number = screen.ids.id_number.text
+            motif = screen.ids.motif.text
+            date = screen.ids.date.text
+            arrival_time = screen.ids.arrival_time.text
+            exit_time = screen.ids.exit_time.text
+            observation = screen.ids.observation.text
 
             if not all([nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time, exit_time, observation]):
                 self.show_error_dialog("Tous les champs sont obligatoires.")
@@ -266,8 +365,8 @@ class Gestion(MDApp):
                 self.show_error_dialog(error or "Erreur lors de la mise à jour du visiteur.")
                 return
             
-            self.root.ids.btn_save.disabled = True
-            self.root.ids.btn_cancel.disabled = True
+            screen.ids.btn_save.disabled = True
+            screen.ids.btn_cancel.disabled = True
             self.show_info_snackbar("Modifications enregistrées avec succès!")
             
             # Rafraîchir l'affichage
@@ -346,12 +445,14 @@ class Gestion(MDApp):
     
     def get_field(self, field_name):
         """Retourne le champ de date correspondant au nom."""
+        
+        screen = self.root.get_screen("screen A")
         if "day" in field_name:
-            return self.root.ids.day_filter
+            return screen.ids.day_filter
         elif "month" in field_name:
-            return self.root.ids.month_filter
+            return screen.ids.month_filter
         elif "year" in field_name:
-            return self.root.ids.year_filter
+            return screen.ids.year_filter
         else:
             raise ValueError(f"Champ inconnu : {field_name}")
 
@@ -370,7 +471,20 @@ class Gestion(MDApp):
         )
         return "\n".join(lignes)
     
+    def go_to_account(self):
+        self.old_transition = self.root.transition
+        self.root.transition = SlideTransition()
+        self.root.current = "account"
+    
+    def go_to_login(self):
+        self.root.current = "screen A"
+        self.ouvrir_dialogue_login()
+        
     def login(self, email, password):
+        if not email or not password:
+            self.show_error_dialog("Tous les champs sont obligatoires.")
+            return
+        
         self.user, error = self.user_manager.authenticate_user(email, password)
         
         if error:
@@ -378,62 +492,11 @@ class Gestion(MDApp):
             return
         
         self.show_info_snackbar("Connexion réussie!")
-        self.root.current = "accueil" if self.user.role == "Huissier" else "historique"
-         
-    def on_select_all_visitors(self, is_active):
-        screen = self.root.get_screen(self.root.current)
-        if screen.name == "accueil":
-            table = screen.ids.table_visiteurs
-        elif screen.name == "historique":
-            table = screen.ids.historique_table
-            
-        for row in table.data:
-            if is_active:
-                if row.get("selected") != is_active:
-                    self.selected_visitors.clear()
-                    screen.ids.select_all_checkbox.active = False
-                    return
-                
-                self.selected_visitors.add(row.get("visitor_id"))
-        
-        screen.partager_visible = bool(self.selected_visitors)
-        
-    def on_select_visitor(self, visitor_row, is_active):
-        # Détermine la table selon l'écran courant
-        screen = self.root.get_screen(self.root.current)
-        if screen.name == "accueil":
-            table = screen.ids.table_visiteurs
-        elif screen.name == "historique":
-            table = screen.ids.historique_table
-        else:
-            return
-
-        # Mets à jour la propriété 'selected' de la ligne
-        visitor_row.selected = is_active
-        # Mets aussi à jour dans la data de la table
-        for row in table.data:
-            if row.get("visitor_id") == visitor_row.visitor_id:
-                row["selected"] = is_active
-
-        if is_active:
-            if visitor_row.visitor_id not in self.selected_visitors:
-                self.selected_visitors.add(visitor_row.visitor_id)
-        else:
-            if visitor_row.visitor_id in self.selected_visitors:
-                self.selected_visitors.discard(visitor_row.visitor_id)
-        
-        screen.partager_visible = bool(self.selected_visitors)
-        
+        self.dialog.dismiss()
+             
     def on_start(self):
-        visiteurs = self.visitor_manager.lister_visiteurs()
-        for visiteur in visiteurs:
-            hero_item = HeroItem(
-                visiteur=visiteur, 
-                tag=f"{visiteur.id}", 
-                manager=self.root
-            )
-            hero_item.md_bg_color = "lightgrey"
-            self.root.ids.box.add_widget(hero_item)
+        self.afficher_heros_visiteurs()
+        self.ouvrir_dialogue_login()
 
     def open_filechooser(self):
         self.file_manager_mode = "image"
@@ -513,6 +576,34 @@ class Gestion(MDApp):
             ),
         ]
         self.dialog = self.creer_dialogue("Ajouter un visiteur", content, actions)
+       
+    def ouvrir_dialogue_login(self):
+        content = MDBoxLayout(
+            orientation="vertical",
+            spacing=20,
+            padding=10,
+            adaptive_height=True
+        )
+        email_field = self.create_text_field("Entrez votre email", icon="email")
+        email_field.required = True
+        password_field = self.create_text_field("Entrez votre mot de passe", icon="lock")
+        password_field.password = True
+        password_field.required = True
+        
+        content.add_widget(email_field)
+        content.add_widget(password_field)
+        
+        actions = [
+            Widget(),
+            self.creer_bouton(
+                "Se connecter",
+                style="elevated",
+                on_release=lambda x: self.login(email_field.text, password_field.text)
+            ),
+            Widget()
+        ]
+        
+        self.dialog = self.creer_dialogue("Connexion", content, actions)
             
     def ouvrir_dialogue_partager(self):
         email_button = self.creer_bouton(
@@ -544,25 +635,27 @@ class Gestion(MDApp):
         self.dialog = self.creer_dialogue("Partager", content, actions)
             
     def remplir_champs(self):
-        self.root.ids.nom.text = self.visiteur.nom
-        self.root.ids.prenom.text = self.visiteur.prenom
-        self.root.ids.phone_number.text = self.visiteur.phone_number
-        self.root.ids.id_type.text = self.visiteur.id_type
-        self.root.ids.id_number.text = self.visiteur.id_number
-        self.root.ids.motif.text = self.visiteur.motif
-        self.root.ids.date.text = self.visiteur.date
-        self.root.ids.arrival_time.text = self.visiteur.arrival_time
-        self.root.ids.exit_time.text = self.visiteur.exit_time
-        self.root.ids.observation.text = self.visiteur.observation
+        screen = self.root.get_screen("screen B")
+        screen.ids.nom.text = self.visiteur.nom
+        screen.ids.prenom.text = self.visiteur.prenom
+        screen.ids.phone_number.text = self.visiteur.phone_number
+        screen.ids.id_type.text = self.visiteur.id_type
+        screen.ids.id_number.text = self.visiteur.id_number
+        screen.ids.motif.text = self.visiteur.motif
+        screen.ids.date.text = self.visiteur.date
+        screen.ids.arrival_time.text = self.visiteur.arrival_time
+        screen.ids.exit_time.text = self.visiteur.exit_time
+        screen.ids.observation.text = self.visiteur.observation
             
-        self.root.ids.btn_save.disabled = True
-        self.root.ids.btn_cancel.disabled = True
+        screen.ids.btn_save.disabled = True
+        screen.ids.btn_cancel.disabled = True
 
     def renitialiser_filtre(self):
+        screen = self.root.get_screen("screen A")
         # Vide les champs de filtre
-        self.root.ids.year_filter.text = ""
-        self.root.ids.month_filter.text = ""
-        self.root.ids.day_filter.text = ""
+        screen.ids.year_filter.text = ""
+        screen.ids.month_filter.text = ""
+        screen.ids.day_filter.text = ""
         # Affiche tous les visiteurs
         self.afficher_heros_visiteurs()
     
@@ -590,7 +683,7 @@ class Gestion(MDApp):
             screen.ids.new_password_second.text = ""
             self.root.get_screen("reset").ids.reset_email.text = ""
             
-            self.root.current = "login"
+            self.go_to_login()
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"
@@ -668,27 +761,5 @@ class Gestion(MDApp):
             duration=2,
             background_color="green"
         ).open()
-    
-    def valider_champs(self, nom, prenom, phone_number, id_type, id_number, motif):
-        if not all([nom, prenom, phone_number, id_type, id_number, motif]):
-            return "Tous les champs sont obligatoires."
-        if not phone_number.isdigit() or len(phone_number) < 10:
-            return "Numéro de téléphone invalide."
-        return None
-      
-    def valider_sortie(self, visitor_row, dialog):
-        exit_time = self.exit_time_field.text
-        observation = self.observation_field.text
-        # Mets à jour la base de données via VisitorManager
-        success, error = self.visitor_manager.mettre_a_jour_visiteur(
-            int(visitor_row.visitor_id),
-            exit_time=exit_time,
-            observation=observation
-        )
-        if not success:
-            self.show_error_dialog(error or "Erreur lors de la mise à jour du visiteur.")
-            return
-        dialog.dismiss()
-        self.afficher_table_visiteurs()
         
 Gestion().run()
