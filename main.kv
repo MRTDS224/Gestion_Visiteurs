@@ -105,6 +105,18 @@
                 MDExtendedFabButtonText:
                     text: "Ajouter un visiteur"
             MDIconButton:
+                icon: "bell"
+                style: "tonal"
+                pos_hint: {"center_y": 0.5}
+                on_release: root.open_notifications()
+                MDBadge:
+                    id: badge
+                    text: "3"
+                    badge_color: "red"
+                    badge_pos: ("right", "top")
+                    badge_animation: True
+                    badge_animation_type: "fade_in"
+            MDIconButton:
                 icon: "account"
                 style: "tonal"
                 theme_bg_color: "Custom"
@@ -112,8 +124,7 @@
                 theme_icon_color: "Custom"
                 icon_color: "black"
                 pos_hint: {"center_y": 0.5}
-                on_release: 
-                    app.go_to_account()
+                on_release: app.go_to_account()
 
         ScrollView:
 

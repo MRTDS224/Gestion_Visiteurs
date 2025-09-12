@@ -3,6 +3,13 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 import os
+from datetime import datetime, timezone
+from sqlalchemy import (
+    create_engine, Column, Integer, String, LargeBinary,
+    ForeignKey, DateTime, func, Text
+)
+from sqlalchemy.orm import relationship
+from models.user import Base, User
 
 # Remonte d'un dossier pour pointer vers la racine du projet
 DB_PATH = Path(__file__).parent.parent / "database/visiteurs.db"
@@ -133,3 +140,24 @@ class VisitorDatabase:
         return [VisitorModel(*row) for row in rows]
 
 db = VisitorDatabase()
+
+class VisitorShare(Base):
+    __tablename__ = "visitor_shares"
+    id                   = Column(Integer, primary_key=True)
+    visitor_id           = Column(Integer, nullable=False, index=True)
+    shared_by_user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shared_with_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    nom                  = Column(String, nullable=False)
+    prenom               = Column(String, nullable=False)
+    id_type              = Column(String, nullable=False)
+    id_number            = Column(String, nullable=False)
+    phone_number         = Column(String, nullable=False)
+    motif                = Column(Text)
+    image_data           = Column(LargeBinary, nullable=False)
+    shared_at            = Column(DateTime(timezone=True), server_default=func.now())
+    status               = Column(String, default="active", nullable=False)
+
+    shared_by  = relationship("User", back_populates="shares_sent",
+                              foreign_keys=[shared_by_user_id])
+    shared_with = relationship("User", back_populates="shares_received",
+                               foreign_keys=[shared_with_user_id])

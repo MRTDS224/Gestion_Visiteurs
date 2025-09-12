@@ -1,8 +1,12 @@
-from models.visitor import VisitorModel, db
+from models.visitor import VisitorModel, db, VisitorShare
+from managers.user_manager import UserManager
 import json
 from typing import Optional, Tuple, List
 
 class VisitorManager:
+    def __init__(self):
+        self.session = UserManager().Session()
+        
     def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
         """Ajoute un visiteur et le sauvegarde. Retourne le VisitorModel et un message d'erreur éventuel."""
         visitor_id = db.add_visitor(image_path, nom, prenom, phone_number, id_type, id_number, motif)
@@ -53,3 +57,75 @@ class VisitorManager:
             return False, "Aucune modification effectuée"
         
         return True, None
+    
+    def share_visitor(
+        self, visitor, shared_by_id, shared_with_id, motif=None
+    ):
+        """Crée un partage en copiant les données du visitor."""
+        session = self.session
+        try:
+            # Lire l’image sur disque
+            with open(visitor.image_path, "rb") as f:
+                img = f.read()
+
+            share = VisitorShare(
+                visitor_id=visitor.id,
+                shared_by_user_id=shared_by_id,
+                shared_with_user_id=shared_with_id,
+                nom=visitor.nom,
+                prenom=visitor.prenom,
+                id_type=visitor.id_type,
+                id_number=visitor.id_number,
+                phone_number=visitor.phone_number,
+                motif=motif or visitor.motif,
+                image_data=img,
+            )
+            self.session.add(share)
+            self.session.commit()
+            return share.id
+        except:
+            session.rollback()
+            raise 
+        finally:
+            session.close()
+
+
+    def get_shares_for_user(self, user_id):
+        """Liste les partages reçus par un utilisateur."""
+        session = self.session
+        try:
+            return (
+                session.query(VisitorShare)
+                .filter_by(shared_with_user_id=user_id, status="active")
+                .all()
+            )
+        finally:
+            session.close()
+
+    def revoke_share(self, share_id):
+        """Révoque un partage existant."""
+        session = self.session
+        try:
+            share = self.session.get(VisitorShare, share_id)
+            if share and share.status == "active":
+                share.status = "revoked"
+                return True
+            return False
+        finally:
+            session.close()
+
+
+    def check_access(self, visitor_id, user_id):
+        """Vérifie si un partage actif existe pour cet utilisateur."""
+        session = self.session
+        try:
+            return (
+                self.session.query(VisitorShare.id)
+                .filter_by(visitor_id=visitor_id,
+                        shared_with_user_id=user_id,
+                        status="active")
+                .first()
+                is not None
+            )
+        finally:
+            session.close()

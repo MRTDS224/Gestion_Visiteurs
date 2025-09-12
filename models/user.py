@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey
 )
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from passlib.hash import bcrypt
 import secrets
 
@@ -25,6 +26,17 @@ class User(Base):
     structure = Column(String(100), nullable=False)
     role = Column(String(20), default="utilisateur", nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    
+    shares_sent     = relationship(
+        "VisitorShare",
+        back_populates="shared_by",
+        foreign_keys="VisitorShare.shared_by_user_id",
+    )
+    shares_received = relationship(
+        "VisitorShare",
+        back_populates="shared_with",
+        foreign_keys="VisitorShare.shared_with_user_id",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id!r}, email={self.email!r}, structure={self.structure!r})>"

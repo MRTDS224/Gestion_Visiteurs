@@ -12,6 +12,7 @@ from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLeadingIcon
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
@@ -19,7 +20,7 @@ from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.popup import Popup
+from kivymd.uix.list import MDList
 from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
@@ -67,8 +68,42 @@ class HeroItem(MDHeroFrom):
 
         Clock.schedule_once(switch_screen, 0.2)
 
+from kivymd.uix.behaviors import RectangularRippleBehavior
+from kivy.uix.floatlayout import FloatLayout
+
 class MainScreen(MDScreen):
-    pass
+    def update_notification_badge(self):
+        """Récupère et affiche le nombre de partages reçus."""
+        user_id = MDApp.get_running_app().user.id
+        shares = VisitorManager().get_shares_for_user(user_id)
+        count = len(shares)
+        self.ids.notif_btn.count = count
+
+    def open_notifications(self):
+        """Ouvre un dialogue listant les notifications par ordre d’arrivée."""
+        user_id = MDApp.get_running_app().user.id
+        shares = VisitorManager().get_shares_for_user(user_id)
+        
+        # Trier par shared_at ascendant
+        shares_sorted = sorted(shares, key=lambda s: s.shared_at)
+
+        content = MDList()
+        for share in shares_sorted:
+            # Formatter la date
+            ts = share.shared_at.strftime("%d/%m/%Y %H:%M")
+            text = f"{share.nom} {share.prenom} - {share.motif}" + ts
+            content.add_widget(
+                MDLabel(text=text, size_hint_y=None, height=dp(40))
+            )
+
+        # Construire et ouvrir le MDDialog
+        self.dialog = MDDialog(
+            MDDialogHeadlineText(text="Notifications de partage", halign="left", valign="top"),
+            MDDialogContentContainer(content),
+            adaptive_height=True,
+            auto_dismiss=True,
+        )
+        self.dialog.open()
 
 class DetailScreen(MDScreen):
     pass
@@ -678,9 +713,18 @@ class Gestion(MDApp):
             on_release=lambda x: self.envoyer_par_whatsapp()
         )
         
-        content = MDBoxLayout(orientation="horizontal", spacing=20, padding=10, adaptive_height=True)
+        content = MDGridLayout(cols=2, spacing=10, size_hint_y=None, adaptive_height=True)
         content.add_widget(email_button)
         content.add_widget(whatsapp_button)
+        for user in self.user_manager.list_users():
+            if user.id != self.user.id:
+                button = self.creer_bouton(
+                    f"Partager avec {user.prenom} {user.nom}",
+                    style="outlined",
+                    icone="account",
+                    on_release=self.share_visitor(self.visiteur, self.user.id, user.id)
+                )
+                content.add_widget(button)
         
         actions = [
             Widget(),
@@ -799,6 +843,16 @@ class Gestion(MDApp):
             self.file_manager_mode = None
             
             self.activer_boutons_modification()
+    
+    def share_visitor(self, visiteur, from_user_id, to_user_id):
+        def _share(instance):
+            try:
+                self.visitor_manager.share_visitor(visiteur, from_user_id, to_user_id)
+                self.show_info_snackbar("Visiteur partagé avec succès!")
+                self.dialog.dismiss()
+            except ValueError as e:
+                self.show_error_dialog(str(e))
+        return _share
     
     def show_error_dialog(self, message):
         error_dialog = MDDialog(
