@@ -16,6 +16,8 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
+from kivymd.uix.fitimage import FitImage
+from kivymd.uix.card import MDCard
 from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
@@ -29,45 +31,6 @@ import sys
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import urllib.parse
-
-class HeroItem(MDHeroFrom):
-    visiteur = ObjectProperty()
-    manager = ObjectProperty()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.ids.image.ripple_duration_in_fast = 0.05
-
-    def on_transform_in(self, instance_hero_widget, duration):
-        for instance in [
-            instance_hero_widget,
-            instance_hero_widget._overlay_container,
-            instance_hero_widget._image,
-        ]:
-            Animation(radius=[0, 0, 0, 0], duration=duration).start(instance)
-
-    def on_transform_out(self, instance_hero_widget, duration):
-        for instance, radius in {
-            instance_hero_widget: [dp(24), dp(24), dp(24), dp(24)],
-            instance_hero_widget._overlay_container: [0, 0, dp(24), dp(24)],
-            instance_hero_widget._image: [dp(24), dp(24), dp(24), dp(24)],
-        }.items():
-            Animation(
-                radius=radius,
-                duration=duration,
-            ).start(instance)
-
-    def on_release(self):
-        def switch_screen(*args):
-            MDApp.get_running_app().visiteur = self.visiteur
-            
-            self.manager.current_heroes = [self.tag]
-            self.manager.get_screen("screen B").ids.hero_to.tag = self.tag
-            self.manager.current = "screen B"
-            
-            MDApp.get_running_app().remplir_champs()
-
-        Clock.schedule_once(switch_screen, 0.2)
 
 class MainScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -89,8 +52,9 @@ class MainScreen(MDScreen):
             return
         
         self.menu.dismiss()
+        self.dialog.dismiss()
         app.show_info_snackbar("Partage accepté. visiteur ajouté à votre liste.")
-        app.restart_app()
+        app.afficher_heros_visiteurs()
         
     def open_share_menu(self, share_id):
         """Ouvre le menu contextuel pour un partage donné."""
@@ -260,9 +224,6 @@ class AccountScreen(MDScreen):
         self.ids.account_password_first.text = ""
         self.ids.account_password_second.text = ""
         self.ids.account_role.text = ""
-        
-        app = MDApp.get_running_app()
-        app.root.transition = app.old_transition
 
 class SignupScreen(MDScreen):
     def signup(self):
@@ -338,13 +299,26 @@ class Gestion(MDApp):
             return
             
         for visiteur in visiteurs:
-            hero_item = HeroItem(
-                visiteur=visiteur,
-                tag=f"{visiteur.id}",
-                manager=self.root
+            layout = MDCard(
+                orientation="vertical",
+                padding=10,
+                size_hint_y=None,
+                height=dp(250),
+                on_release=lambda x, v=visiteur: self.show_visitor_details(v)
             )
-            hero_item.md_bg_color = "lightgrey"
-            box.add_widget(hero_item)
+            layout.add_widget(FitImage(
+                source=visiteur.image_path,
+                size_hint_y=None,
+                height=dp(200)
+            ))
+            layout.add_widget(MDLabel(
+                text=f"{visiteur.nom} {visiteur.prenom}",
+                halign="left",
+                size_hint_y=None,
+                font_size='12sp',
+                height=dp(30),
+            ))
+            box.add_widget(layout)
         
         if self.user is not None:
             self.update_notification_badge()    
@@ -623,19 +597,7 @@ class Gestion(MDApp):
         )
         return "\n".join(lignes)
     
-    def go_to_account(self):
-        self.old_transition = self.root.transition
-        self.root.transition = SlideTransition()
-        self.root.current = "account"
-    
-    def go_to_login(self):
-        self.root.current = "screen A"
-        self.root.transition = self.old_transition
-        self.ouvrir_dialogue_login()
-        
     def go_to_screen(self, screen_name):
-        self.old_transition = self.root.transition
-        self.root.transition = SlideTransition()
         self.root.current = screen_name
         self.dialog.dismiss()
         
@@ -822,6 +784,7 @@ class Gestion(MDApp):
             
     def remplir_champs(self):
         screen = self.root.get_screen("screen B")
+        screen.ids.image.source = self.visiteur.image_path
         screen.ids.nom.text = self.visiteur.nom
         screen.ids.prenom.text = self.visiteur.prenom
         screen.ids.phone_number.text = self.visiteur.phone_number
@@ -869,7 +832,8 @@ class Gestion(MDApp):
             screen.ids.new_password_second.text = ""
             self.root.get_screen("reset").ids.reset_email.text = ""
             
-            self.go_to_login()
+            self.root.current = "screen A"
+            self.ouvrir_dialogue_login()
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"
@@ -884,7 +848,6 @@ class Gestion(MDApp):
             self.show_info_snackbar("Connexion réussie.")
             self.update_notification_badge()
             self.root.current = "screen A"
-            self.root.transition = self.old_transition
         except ValueError as e:
             self.show_error_dialog(str(e))
             
@@ -964,6 +927,12 @@ class Gestion(MDApp):
             background_color="green"
         ).open()
   
+    def show_visitor_details(self, visiteur):
+        self.visiteur = visiteur
+        self.remplir_champs()
+        self.root.current = "screen B"
+        self.root.transition = SlideTransition(direction="left")
+    
     def update_notification_badge(self):
         """Récupère et affiche le nombre de partages reçus."""
         shares = self.visitor_manager.get_shares_for_user(self.user.id)

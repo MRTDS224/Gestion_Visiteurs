@@ -1,37 +1,6 @@
 #:kivy 2.3.1
 #:import SlideTransition kivy.uix.screenmanager.SlideTransition
 #:import dp kivy.metrics.dp
-<HeroItem>
-    size_hint_y: None
-    height: "200dp"
-    radius: "24dp"
-
-    MDSmartTile:
-        id: tile
-        size_hint: None, None
-        size: root.size
-        on_release: root.on_release()
-
-        MDSmartTileImage:
-            id: image
-            source: root.visiteur.image_path
-            radius: dp(24)
-
-        MDSmartTileOverlayContainer:
-            id: overlay
-            md_bg_color: 0, 0, 0, .5
-            adaptive_height: True
-            padding: "8dp"
-            spacing: "8dp"
-            radius: [0, 0, dp(24), dp(24)]
-
-            MDLabel:
-                text: root.visiteur.nom +" "+ root.visiteur.prenom
-                theme_text_color: "Custom"
-                text_color: "white"
-                adaptive_height: True
-
-#
 <MainScreen>:
     MDBoxLayout:
         orientation: 'vertical'
@@ -124,7 +93,7 @@
                 theme_icon_color: "Custom"
                 icon_color: "black"
                 pos_hint: {"center_y": 0.5}
-                on_release: app.go_to_account()
+                on_release: root.manager.current = "account"
 
         ScrollView:
 
@@ -137,8 +106,6 @@
 
 #
 <DetailScreen>:
-    heroes_to: [hero_to]
-    
     MDTopAppBar:
         type: "small"
         pos_hint: {"top": 1}
@@ -149,7 +116,6 @@
             MDActionTopAppBarButton:
                 icon: "arrow-left"
                 on_release:
-                    root.current_heroes = [hero_to.tag]
                     root.manager.current = "screen A"
 
         MDTopAppBarTitle:
@@ -177,8 +143,12 @@
         spacing: "20dp"
         size_hint: .3, .5
         pos_hint: {"top": .9}
-        MDHeroTo:
-            id: hero_to
+        FitImage:
+            id: image
+            source: ""
+            size_hint: None, None
+            size: dp(200), dp(200)
+
         MDButton:
             style: "outlined"
             on_release: app.open_filechooser()
