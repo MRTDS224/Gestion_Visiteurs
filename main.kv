@@ -404,7 +404,9 @@
             pos_hint: {"center_x": 0.5}
             md_bg_color: "red"
             text_color: "white"
-            on_release: app.go_to_login()
+            on_release: 
+                root.manager.current = "screen A"
+                app.ouvrir_dialogue_login()
             MDButtonText:
                 text: "Deconnexion"
             MDButtonIcon:

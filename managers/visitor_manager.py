@@ -1,7 +1,9 @@
 from models.visitor import VisitorModel, db, VisitorShare
 from managers.user_manager import UserManager
+from datetime import datetime
 import json
 from typing import Optional, Tuple, List
+import os
 
 class VisitorManager:
     def __init__(self):
@@ -120,9 +122,13 @@ class VisitorManager:
             if not share or share.status != "active":
                 return False
             
+            # Générer un nom de fichier unique
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_path = os.path.join("pictures/ID", f"imported_image_{share_id}_{timestamp}.jpg")
+            
             visitor = VisitorModel(
                 id=None,
-                image_path="imported_image.jpg",  # Placeholder path
+                image_path=image_path,
                 nom=share.nom,
                 prenom=share.prenom,
                 phone_number=share.phone_number,
