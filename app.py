@@ -8,7 +8,7 @@ from kivymd.app import MDApp
 from kivymd.uix.hero import MDHeroFrom
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
-from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon
+from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLeadingIcon
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -20,11 +20,12 @@ from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.list import MDList
+from kivymd.uix.list import MDList, MDListItem, MDListItemLeadingIcon, MDListItemHeadlineText, MDListItemSupportingText, MDListItemTertiaryText, MDListItemTrailingIcon
 from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
 import os
+import sys
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import urllib.parse
@@ -68,32 +69,90 @@ class HeroItem(MDHeroFrom):
 
         Clock.schedule_once(switch_screen, 0.2)
 
-from kivymd.uix.behaviors import RectangularRippleBehavior
-from kivy.uix.floatlayout import FloatLayout
-
 class MainScreen(MDScreen):
-    def update_notification_badge(self):
-        """Récupère et affiche le nombre de partages reçus."""
-        user_id = MDApp.get_running_app().user.id
-        shares = VisitorManager().get_shares_for_user(user_id)
-        count = len(shares)
-        self.ids.notif_btn.count = count
-
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.dialog = None
+        self.menu = None
+        self.icon = None
+        
+    def accept_share(self, share_id):
+        """Accepte un partage de visiteur. Et ajoute le visiteur à la liste."""
+        app = MDApp.get_running_app()
+        try:
+            response = app.visitor_manager.accept_share(share_id)
+            if not response:
+                app.show_error_dialog("Le partage est déjà révoqué ou n'existe pas.")
+                return
+        except Exception as e:
+            app.show_error_dialog(f"Erreur lors de l'acceptation du partage : {e}")
+            return
+        
+        self.menu.dismiss()
+        app.show_info_snackbar("Partage accepté. visiteur ajouté à votre liste.")
+        app.restart_app()
+        
+    def open_share_menu(self, share_id):
+        """Ouvre le menu contextuel pour un partage donné."""
+        if self.menu:
+            self.menu.dismiss()
+        
+        items = [
+            {
+                "text": "Accepter",
+                "on_release": lambda *args: self.accept_share(share_id)
+            },
+            {
+                "text": "Refuser",
+                "on_release": lambda *args: self.refuse_share(share_id)
+            },
+        ]
+        
+        self.menu = MDDropdownMenu(
+            caller=self.icon,
+            items=items,
+            width=dp(150),
+            position="center",
+        )
+        self.menu.open()
+        
     def open_notifications(self):
         """Ouvre un dialogue listant les notifications par ordre d’arrivée."""
-        user_id = MDApp.get_running_app().user.id
-        shares = VisitorManager().get_shares_for_user(user_id)
+        def format_share(share):
+            shared_by_user = MDApp.get_running_app().user_manager.get_user_by_id(share.shared_by_user_id)
+            ts = share.shared_at.strftime("%d/%m/%Y %H:%M")
+            content =  MDListItem(
+                MDListItemLeadingIcon(
+                    icon="account",
+                ),
+                MDListItemHeadlineText(
+                    text="Vous avez un nouveau partage",
+                ),
+                MDListItemSupportingText(
+                    text=f"De la part de {shared_by_user.nom} {shared_by_user.prenom} le {ts}",
+                ),
+                divider = True,
+                theme_bg_color="Custom",
+                md_bg_color=self.theme_cls.transparentColor
+            )
+            icon = MDIconButton(
+                    icon="dots-vertical",
+                    on_release=lambda x, share_id=share.id: self.open_share_menu(share_id)
+                )
+            self.icon = icon
+            content.add_widget(icon)
+            return content
+        
+        app = MDApp.get_running_app()
+        user_id = app.user.id
+        shares = app.visitor_manager.get_shares_for_user(user_id)
         
         # Trier par shared_at ascendant
         shares_sorted = sorted(shares, key=lambda s: s.shared_at)
-
-        content = MDList()
+        content = MDList(spacing=10)
         for share in shares_sorted:
-            # Formatter la date
-            ts = share.shared_at.strftime("%d/%m/%Y %H:%M")
-            text = f"{share.nom} {share.prenom} - {share.motif}" + ts
             content.add_widget(
-                MDLabel(text=text, size_hint_y=None, height=dp(40))
+                format_share(share)
             )
 
         # Construire et ouvrir le MDDialog
@@ -102,9 +161,27 @@ class MainScreen(MDScreen):
             MDDialogContentContainer(content),
             adaptive_height=True,
             auto_dismiss=True,
+            md_bg_color="white"
         )
         self.dialog.open()
-
+    
+    def refuse_share(self, share_id):
+        """Refuse un partage de visiteur."""
+        app = MDApp.get_running_app()
+        try:
+            response = app.visitor_manager.revoke_share(share_id)
+            print(response)
+            if not response:
+                app.show_error_dialog("Le partage est déjà révoqué ou n'existe pas.")
+                return
+        except Exception as e:
+            app.show_error_dialog(f"Erreur lors du refus du partage : {e}")
+            return
+        
+        self.menu.dismiss()
+        
+        app.show_info_snackbar("Partage refusé.")
+        
 class DetailScreen(MDScreen):
     pass
    
@@ -268,6 +345,9 @@ class Gestion(MDApp):
             )
             hero_item.md_bg_color = "lightgrey"
             box.add_widget(hero_item)
+        
+        if self.user is not None:
+            self.update_notification_badge()    
             
     def animer_bouton(self, bouton):
         anim = Animation(opacity=0.5, duration=0.1) + Animation(opacity=1, duration=0.1)
@@ -468,7 +548,9 @@ class Gestion(MDApp):
 
             self.visitor_manager.ajouter_visiteur(image, nom, prenom, phone_number, id_type, id_number, motif)
             self.dialog.dismiss()
-            self.afficher_table_visiteurs()
+            self.afficher_heros_visiteurs()            
+            self.show_info_snackbar("Visiteur ajouté avec succès!")
+
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de l'ajout : {e}")
     
@@ -568,6 +650,7 @@ class Gestion(MDApp):
             self.show_error_dialog(error)
             return
         
+        self.update_notification_badge()
         self.show_info_snackbar("Connexion réussie!")
         self.dialog.dismiss()
              
@@ -747,8 +830,8 @@ class Gestion(MDApp):
         screen.ids.motif.text = self.visiteur.motif
         screen.ids.date.text = self.visiteur.date
         screen.ids.arrival_time.text = self.visiteur.arrival_time
-        screen.ids.exit_time.text = self.visiteur.exit_time
-        screen.ids.observation.text = self.visiteur.observation
+        screen.ids.exit_time.text = self.visiteur.exit_time or ""
+        screen.ids.observation.text = self.visiteur.observation or ""
             
         screen.ids.btn_save.disabled = True
         screen.ids.btn_cancel.disabled = True
@@ -790,11 +873,16 @@ class Gestion(MDApp):
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"
+       
+    def restart_app(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
             
     def signup(self, last_name, first_name, email, password_first, role):
         try:
             self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
+            self.update_notification_badge()
             self.root.current = "screen A"
             self.root.transition = self.old_transition
         except ValueError as e:
@@ -875,5 +963,17 @@ class Gestion(MDApp):
             duration=2,
             background_color="green"
         ).open()
+  
+    def update_notification_badge(self):
+        """Récupère et affiche le nombre de partages reçus."""
+        shares = self.visitor_manager.get_shares_for_user(self.user.id)
+        self.root.get_screen("screen A").ids.badge.text = str(len(shares)) if shares else ""
         
+    def valider_champs(self, nom, prenom, phone_number, id_type, id_number, motif):
+        if not all([nom, prenom, phone_number, id_type, id_number, motif]):
+            return "Tous les champs sont obligatoires."
+        if not phone_number.isdigit() or len(phone_number) < 10:
+            return "Numéro de téléphone invalide."
+        return None
+          
 Gestion().run()

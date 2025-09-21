@@ -86,6 +86,16 @@ class UserManager:
         finally:
             session.close()
 
+    def get_user_by_id(self, user_id: int) -> User | None:
+        """
+        Retourne l'utilisateur correspondant à l'ID, ou None.
+        """
+        session = self.Session()
+        try:
+            return session.get(User, user_id)
+        finally:
+            session.close()
+    
     def authenticate_user(self, email: str, password: str) -> User:
         """
         Vérifie qu'un utilisateur existe et que le mot de passe est valide.

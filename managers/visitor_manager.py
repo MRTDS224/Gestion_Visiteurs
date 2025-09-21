@@ -58,9 +58,7 @@ class VisitorManager:
         
         return True, None
     
-    def share_visitor(
-        self, visitor, shared_by_id, shared_with_id, motif=None
-    ):
+    def share_visitor(self, visitor, shared_by_id, shared_with_id, motif=None):
         """Crée un partage en copiant les données du visitor."""
         session = self.session
         try:
@@ -89,7 +87,6 @@ class VisitorManager:
         finally:
             session.close()
 
-
     def get_shares_for_user(self, user_id):
         """Liste les partages reçus par un utilisateur."""
         session = self.session
@@ -109,11 +106,51 @@ class VisitorManager:
             share = self.session.get(VisitorShare, share_id)
             if share and share.status == "active":
                 share.status = "revoked"
+                session.commit()
                 return True
             return False
         finally:
             session.close()
-
+            
+    def accept_share(self, share_id):
+        """Accepte un partage et ajoute le visiteur à la liste."""
+        session = self.session
+        try:
+            share = self.session.get(VisitorShare, share_id)
+            if not share or share.status != "active":
+                return False
+            
+            visitor = VisitorModel(
+                id=None,
+                image_path="imported_image.jpg",  # Placeholder path
+                nom=share.nom,
+                prenom=share.prenom,
+                phone_number=share.phone_number,
+                id_type=share.id_type,
+                id_number=share.id_number,
+                motif=share.motif,
+            )
+            # Sauvegarder l'image sur disque
+            with open(visitor.image_path, "wb") as f:
+                f.write(share.image_data)
+            
+            db.add_visitor(
+                visitor.image_path,
+                visitor.nom,
+                visitor.prenom,
+                visitor.phone_number,
+                visitor.id_type,
+                visitor.id_number,
+                visitor.motif
+            )
+            share.status = "accepted"
+            session.commit()
+            return True
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def check_access(self, visitor_id, user_id):
         """Vérifie si un partage actif existe pour cet utilisateur."""
