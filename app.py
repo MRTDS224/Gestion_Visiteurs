@@ -631,14 +631,67 @@ class Gestion(MDApp):
     def on_start(self):
         self.afficher_heros_visiteurs()
         self.ouvrir_dialogue_login()
+    
+    def open_document_dialog(self):
+        """_summary_: ouvre un dialogue contenant les documents partagés avec l'utilisateur.
+        """
+        user_id = self.user.id
+        documents = self.document_manager.get_shares_for_user(user_id)
+        
+        if not documents:
+            self.show_info_snackbar("Aucun document partagé avec vous pour le moment.")
+            return
+        
+        def format_document(doc):
+            shared_by_user = self.user_manager.get_user_by_id(doc.shared_by_user_id)
+            ts = doc.shared_at.strftime("%d/%m/%Y %H:%M")
+            content =  MDListItem(
+                MDListItemLeadingIcon(
+                    icon="file",
+                ),
+                MDListItemHeadlineText(
+                    text=f"Document ID: {doc.id}",
+                ),
+                MDListItemSupportingText(
+                    text=f"Partagé par {shared_by_user.nom} {shared_by_user.prenom} le {ts}",
+                ),
+                MDListItemTertiaryText(
+                    text=f"Type: {doc.document_type.upper()}",
+                ),
+                divider = True,
+                theme_bg_color="Custom",
+                md_bg_color=self.theme_cls.transparentColor
+            )
+            open_icon = MDIconButton(
+                    icon="open-in-new",
+                    on_release=lambda x, path=doc.document_path: webbrowser.open(path)
+                )
+            content.add_widget(open_icon)
+            return content
+        
+        content = MDList(spacing=10)
+        for doc in documents:
+            content.add_widget(
+                format_document(doc)
+            )
+
+        # Construire et ouvrir le MDDialog
+        self.dialog = MDDialog(
+            MDDialogHeadlineText(text="Documents partagés avec vous", halign="left", valign="top"),
+            MDDialogContentContainer(content),
+            adaptive_height=True,
+            auto_dismiss=True,
+            md_bg_color="white"
+        )
+        self.dialog.open()
+        
+    def open_document_filechooser(self):
+        self.file_manager_mode = "document"
+        self.file_manager.show("C:/Users/mrtds/Documents")
 
     def open_image_filechooser(self):
         self.file_manager_mode = "image"
         self.file_manager.show("C:/Users/mrtds/Pictures")
-    
-    def open_document_filechooser(self):
-        self.file_manager_mode = "document"
-        self.file_manager.show("C:/Users/mrtds/Documents")
     
     def open_menu(self, field_name):
         if field_name == "id":

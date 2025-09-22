@@ -88,18 +88,18 @@
                 icon: "file-send"
                 style: "tonal"
                 theme_bg_color: "Custom"
-                md_bg_color: "yellow"
+                md_bg_color: "#BBDEFB"
                 theme_icon_color: "Custom"
-                icon_color: "blue"
+                icon_color: "#1E88E5"
                 pos_hint: {"center_y": 0.5}
                 on_release: app.open_document_filechooser()
             MDIconButton:
                 icon: "file-eye"
                 style: "tonal"
                 theme_bg_color: "Custom"
-                md_bg_color: "brown"
+                md_bg_color: "#E0F2F1"
                 theme_icon_color: "Custom"
-                icon_color: "blue"
+                icon_color: "#004D40"
                 pos_hint: {"center_y": 0.5}
                 on_release: app.open_document_dialog()
             MDIconButton:
@@ -145,17 +145,29 @@
                 id: btn_save
                 icon: "content-save"
                 disabled: True
+                md_bg_color: "#a7d9adff"
+                theme_icon_color: "Custom"
+                icon_color: "#10b480ff"
                 on_release: app.enregistrer_modifications()
             MDActionTopAppBarButton:
                 id: btn_cancel
                 icon: "cancel"
                 disabled: True
+                md_bg_color: "#FFCDD2"
+                theme_icon_color: "Custom"
+                icon_color: "#C62828"
                 on_release: app.annuler_modifications()
             MDActionTopAppBarButton:
                 icon: "trash-can-outline"
+                md_bg_color: "#FFCDD2"
+                theme_icon_color: "Custom"
+                icon_color: "#C62828"
                 on_release: app.delete_visitor()
             MDActionTopAppBarButton:
                 icon: "share"
+                md_bg_color: "#BBDEFB"
+                theme_icon_color: "Custom"
+                icon_color: "#1E88E5"
                 on_release: app.ouvrir_dialogue_partager()
     MDBoxLayout:
         orientation: 'vertical'
