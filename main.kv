@@ -85,6 +85,24 @@
                     badge_animation: True
                     badge_animation_type: "fade_in"
             MDIconButton:
+                icon: "file-send"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "yellow"
+                theme_icon_color: "Custom"
+                icon_color: "blue"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.open_document_filechooser()
+            MDIconButton:
+                icon: "file-eye"
+                style: "tonal"
+                theme_bg_color: "Custom"
+                md_bg_color: "brown"
+                theme_icon_color: "Custom"
+                icon_color: "blue"
+                pos_hint: {"center_y": 0.5}
+                on_release: app.open_document_dialog()
+            MDIconButton:
                 icon: "account"
                 style: "tonal"
                 theme_bg_color: "Custom"
@@ -153,7 +171,7 @@
 
         MDButton:
             style: "outlined"
-            on_release: app.open_filechooser()
+            on_release: app.open_image_filechooser()
             MDButtonText:
                 text: "Modifier  l'image"
             MDButtonIcon:

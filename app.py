@@ -26,6 +26,7 @@ from kivymd.uix.list import MDList, MDListItem, MDListItemLeadingIcon, MDListIte
 from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
+from managers.document_manager import DocumentManager
 import os
 import sys
 from datetime import datetime, date, timezone, timedelta
@@ -266,9 +267,10 @@ class Gestion(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.visitor_manager = VisitorManager()
+        self.user_manager = UserManager()
+        self.document_manager = DocumentManager()
         self.icon = "pictures/logo1.jpg"
         self.title = "G-Entry"
-        self.user_manager = UserManager()
         self.dialog = None
         self.menu = None
         self.user = None
@@ -277,6 +279,7 @@ class Gestion(MDApp):
             select_path=self.select_file,
         )
         self.file_manager_mode = None
+        self.selected_document_path = ""
         self.selected_image_path = ""
         self.menu = MDDropdownMenu(
             position="bottom",
@@ -342,7 +345,7 @@ class Gestion(MDApp):
             "Sélectionner une image",
             style="elevated",
             icone="image",
-            on_release=lambda x: self.open_filechooser(),
+            on_release=lambda x: self.open_image_filechooser(),
         )
         self.nom_field = self.create_text_field("Entrez le nom")
         self.prenom_field = self.create_text_field("Entrez le prénom")
@@ -629,9 +632,13 @@ class Gestion(MDApp):
         self.afficher_heros_visiteurs()
         self.ouvrir_dialogue_login()
 
-    def open_filechooser(self):
+    def open_image_filechooser(self):
         self.file_manager_mode = "image"
-        self.file_manager.show("C:/Users/mrtds/Pictures")  # Mets le chemin de départ adapté à ton OS
+        self.file_manager.show("C:/Users/mrtds/Pictures")
+    
+    def open_document_filechooser(self):
+        self.file_manager_mode = "document"
+        self.file_manager.show("C:/Users/mrtds/Documents")
     
     def open_menu(self, field_name):
         if field_name == "id":
@@ -707,7 +714,21 @@ class Gestion(MDApp):
             ),
         ]
         self.dialog = self.creer_dialogue("Ajouter un visiteur", content, actions)
-       
+    
+    def ouvrir_dialogue_choix_destinataire_document(self):
+        content = MDBoxLayout(orientation="vertical", spacing=10, adaptive_height=True)
+        for user in self.user_manager.list_users():
+            if user.id != self.user.id:
+                btn = self.creer_bouton(
+                    f"Partager avec {user.prenom} {user.nom}",
+                    style="outlined",
+                    icone="account",
+                    on_release=lambda x, uid=user.id: self.share_document(self.user.id, uid, self.selected_document_path)
+                )
+                content.add_widget(btn)
+        actions = [self.creer_bouton("Annuler", style="text", on_release=lambda x: self.dialog.dismiss())]
+        self.dialog = self.creer_dialogue("Choisir le destinataire", content, actions)
+  
     def ouvrir_dialogue_login(self):
         content = MDBoxLayout(
             orientation="vertical",
@@ -884,25 +905,34 @@ class Gestion(MDApp):
         self.menu.dismiss()
     
     def select_file(self, path):
-        self.file_manager.close()
-        if self.file_manager_mode == "export":
-            chemin = os.path.join(path, "visiteurs_export.json") if os.path.isdir(path) else path
-            self.visitor_manager.exporter_visiteurs(chemin)
-            self.show_error_dialog(f"Export terminé !\nFichier : {chemin}")
-        elif self.file_manager_mode == "import":
-            self.visitor_manager.importer_visiteurs(path)
-            self.afficher_table_visiteurs()
-            self.show_error_dialog("Import terminé !")
+        if self.file_manager_mode == "document":
+            if not path.lower().endswith(('.pdf', '.txt', '.doc', '.docx')):
+                self.show_error_dialog("Veuillez sélectionner un fichier PDF, TXT ou DOC valide.")
+                return
+            self.file_manager.close()
+            self.selected_document_path = path
+            self.file_manager_mode = None
+            
+            # Ouvre le dialogue pour choisir le destinataire
+            self.ouvrir_dialogue_choix_destinataire_document()
+            
         elif self.file_manager_mode == "image":
             if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                 self.show_error_dialog("Veuillez sélectionner un fichier image valide.")
                 return
+            self.file_manager.close()
             self.selected_image_path = path
             if hasattr(self, "image_button"):
                 self.image_button.children[0].text = os.path.basename(path)
             self.file_manager_mode = None
             
             self.activer_boutons_modification()
+    
+    def share_document(self, from_user_id, to_user_id, document_path):
+        document_type = os.path.splitext(document_path)[1][1:]
+        self.document_manager.share_document(from_user_id, to_user_id, document_path, document_type)
+        self.show_info_snackbar("Document partagé avec succès!")
+        self.dialog.dismiss()
     
     def share_visitor(self, visiteur, from_user_id, to_user_id):
         def _share(instance):
