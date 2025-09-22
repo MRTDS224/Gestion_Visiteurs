@@ -457,6 +457,15 @@ class Gestion(MDApp):
         dialog.open()
         return dialog
     
+    def delete_visitor(self):
+        succes, error = self.visitor_manager.supprimer_visiteur(self.visiteur.id)
+        if error:
+            self.show_error_dialog(error)
+            return
+        self.show_info_snackbar("Visiteur supprimé avec succès.")
+        self.root.current = "screen A"
+        self.afficher_heros_visiteurs()
+        
     def enregistrer_modifications(self):
         try:
             screen = self.root.get_screen("screen B")

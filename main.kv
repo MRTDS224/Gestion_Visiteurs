@@ -66,8 +66,7 @@
                 id: add_visitor_btn
                 height: dp(48)
                 pos_hint: {"center_y": 0.5}
-                on_enter: self.fab_state = "expand"
-                on_leave: self.fab_state = "collapse"
+                on_press: self.fab_state = "expand" if self.fab_state == "collapse" else "collapse"
                 on_release: app.ouvrir_dialogue_ajout_visiteur()
                 MDExtendedFabButtonIcon:
                     icon: "account-plus"
@@ -134,6 +133,9 @@
                 icon: "cancel"
                 disabled: True
                 on_release: app.annuler_modifications()
+            MDActionTopAppBarButton:
+                icon: "trash-can-outline"
+                on_release: app.delete_visitor()
             MDActionTopAppBarButton:
                 icon: "share"
                 on_release: app.ouvrir_dialogue_partager()
