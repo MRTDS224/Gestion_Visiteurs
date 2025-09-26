@@ -227,6 +227,21 @@ class AccountScreen(MDScreen):
         self.ids.account_password_second.text = ""
         self.ids.account_role.text = ""
 
+class LoginScreen(MDScreen):
+    def login(self):
+        email = self.ids.login_email.text.rstrip()
+        password = self.ids.login_password.text.rstrip()
+        
+        if not email or not password:
+            MDApp.get_running_app().show_error_dialog("Tous les champs sont obligatoires.")
+            return
+        
+        MDApp.get_running_app().login(email, password)
+    
+    def on_leave(self, *args):
+        self.ids.login_email.text = ""
+        self.ids.login_password.text = ""
+        
 class SignupScreen(MDScreen):
     def signup(self):
         last_name = self.ids.signup_last_name.text.rstrip()
@@ -254,14 +269,25 @@ class SignupScreen(MDScreen):
         
         MDApp.get_running_app().signup(last_name, first_name, email, password_first, role.capitalize())
 
+    def on_leave(self, *args):
+        self.ids.signup_last_name.text = ""
+        self.ids.signup_first_name.text = ""
+        self.ids.signup_email.text = ""
+        self.ids.signup_password_first.text = ""
+        self.ids.signup_password_second.text = ""
+        self.ids.signup_role.text = ""
 class ResetPasswordScreen(MDScreen):
-    pass
+    def on_leave(self, *args):
+        self.ids.reset_email.text = ""
 
 class CodeInputScreen(MDScreen):
-    pass
+    def on_leave(self, *args):
+        self.ids.reset_code.text = ""
 
 class NewPasswordScreen(MDScreen):
-    pass
+    def on_leave(self, *args):
+        self.ids.new_password_first.text = ""
+        self.ids.new_password_second.text = ""
    
 class Gestion(MDApp):
     visiteur = ObjectProperty()
@@ -462,13 +488,42 @@ class Gestion(MDApp):
         return dialog
     
     def delete_visitor(self):
-        succes, error = self.visitor_manager.supprimer_visiteur(self.visiteur.id)
-        if error:
-            self.show_error_dialog(error)
+        def annuler_suppression():
+            self.dialog.dismiss()
             return
-        self.show_info_snackbar("Visiteur supprimé avec succès.")
-        self.root.current = "screen A"
-        self.afficher_heros_visiteurs()
+        
+        def confirmer_suppression():
+            succes, error = self.visitor_manager.supprimer_visiteur(self.visiteur.id)
+            if error:
+                self.show_error_dialog(error)
+                return
+            
+            self.dialog.dismiss()
+            self.show_info_snackbar("Visiteur supprimé avec succès.")
+            self.root.current = "screen A"
+            self.afficher_heros_visiteurs()
+        
+        # Ouvrir un dialgue de confirmation
+        content = MDLabel(
+            text=f"Etes vous sûr de vouloir supprimer ce visiteur. Cette action est irréversible.",
+            halign="center",
+            size_hint_y=None,
+            height=dp(30),
+        )
+        actions = [
+            Widget(),
+            self.creer_bouton(
+                "Annuler",
+                style="text",
+                on_release=lambda x: annuler_suppression()
+            ),
+            self.creer_bouton(
+                "Supprimer",
+                style="elevated",
+                on_release=lambda x: confirmer_suppression()
+            ),
+        ]
+        self.dialog = self.creer_dialogue("Confirmer la suppression", content, actions)
         
     def enregistrer_modifications(self):
         try:
@@ -609,10 +664,6 @@ class Gestion(MDApp):
             f"Observation : {visiteur.observation or 'Aucune'}\n"
         )
         return "\n".join(lignes)
-    
-    def go_to_screen(self, screen_name):
-        self.root.current = screen_name
-        self.dialog.dismiss()
         
     def login(self, email, password):
         if not email or not password:
@@ -626,12 +677,11 @@ class Gestion(MDApp):
             return
         
         self.update_notification_badge()
+        self.root.current = "screen A"
         self.show_info_snackbar("Connexion réussie!")
-        self.dialog.dismiss()
              
     def on_start(self):
         self.afficher_heros_visiteurs()
-        self.ouvrir_dialogue_login()
 
     def open_document(self, document):
         blob, filename = self.document_manager.get_document_blob(document.id)
@@ -795,51 +845,6 @@ class Gestion(MDApp):
                 content.add_widget(btn)
         actions = [self.creer_bouton("Annuler", style="text", on_release=lambda x: self.dialog.dismiss())]
         self.dialog = self.creer_dialogue("Choisir le destinataire", content, actions)
-  
-    def ouvrir_dialogue_login(self):
-        content = MDBoxLayout(
-            orientation="vertical",
-            spacing=20,
-            padding=10,
-            adaptive_height=True,
-            
-        )
-        email_field = self.create_text_field("Entrez votre email", icon="email")
-        email_field.required = True
-        email_field.pos_hint = {"center_x": 0.5}
-        password_field = self.create_text_field("Entrez votre mot de passe", icon="lock")
-        password_field.password = True
-        password_field.required = True
-        password_field.pos_hint = {"center_x": 0.5}
-        
-        button_reset = self.creer_bouton(
-            "Mot de passe oublié?",
-            on_release=lambda x: self.go_to_screen("reset")
-        )
-        button_reset.pos_hint = {"center_x": 0.5}
-        
-        button_forgot = self.creer_bouton(
-            "Créer un compte",
-            on_release=lambda x: self.go_to_screen("signup")
-        )
-        button_forgot.pos_hint = {"center_x": 0.5}
-        
-        content.add_widget(email_field)
-        content.add_widget(password_field)
-        content.add_widget(button_reset)
-        content.add_widget(button_forgot)
-        
-        actions = [
-            Widget(),
-            self.creer_bouton(
-                "Se connecter",
-                style="elevated",
-                on_release=lambda x: self.login(email_field.text, password_field.text)
-            ),
-            Widget()
-        ]
-        
-        self.dialog = self.creer_dialogue("Connexion", content, actions)
             
     def ouvrir_dialogue_partager(self):
         email_button = self.creer_bouton(
@@ -930,7 +935,6 @@ class Gestion(MDApp):
             self.root.get_screen("reset").ids.reset_email.text = ""
             
             self.root.current = "screen A"
-            self.ouvrir_dialogue_login()
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"

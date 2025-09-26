@@ -436,15 +436,76 @@
             pos_hint: {"center_x": 0.5}
             md_bg_color: "red"
             text_color: "white"
-            on_release: 
-                root.manager.current = "screen A"
-                app.ouvrir_dialogue_login()
+            on_release: root.manager.current = "login"
             MDButtonText:
                 text: "Deconnexion"
             MDButtonIcon:
                 icon: "logout"
 
 #
+<LoginScreen>:
+    MDCard:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
+        padding: "4dp"
+        size_hint: .5, .6
+        # Sets custom properties.
+        theme_shadow_color: "Custom"
+        shadow_color: "black"
+        theme_bg_color: "Custom"
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            MDLabel:
+                text: "CONNEXION"
+                halign: "center"
+
+            MDTextField:
+                id: login_email
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                validator: "email"
+                required: True
+                MDTextFieldHintText:
+                    text: "Email"
+                MDTextFieldHelperText:
+                    mode: "on_error"
+                MDTextFieldLeadingIcon:
+                    icon: "email"
+
+            MDTextField:
+                id: login_password
+                password: True
+                required: True
+                size_hint_x: .6
+                pos_hint: {"center_x": 0.5}
+                MDTextFieldHintText:
+                    text: "Mot de passe"
+                MDTextFieldHelperText:
+                    mode: "on_error"
+                MDTextFieldLeadingIcon:
+                    icon: "eye-off"
+
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: root.manager.current = "reset"
+                MDButtonText:
+                    text: "Mot de passe oublié ?"
+
+            MDButton:
+                style: "text"
+                pos_hint: {"center_x": 0.5}
+                on_release: root.manager.current = "signup"
+                MDButtonText:
+                    text: "Pas encore inscrit ? S’inscrire"
+            MDButton:
+                style: "elevated"
+                pos_hint: {"center_x": 0.5}
+                on_release: root.login()
+                MDButtonText:
+                    text: "Se connecter"
+
 <SignupScreen>:
     MDCard:
         style: "elevated"
@@ -453,7 +514,7 @@
         size_hint: .5, .9
         # Sets custom properties.
         theme_shadow_color: "Custom"
-        shadow_color: "yellow"
+        shadow_color: "black"
         theme_bg_color: "Custom"
         MDBoxLayout:
             orientation: "vertical"
@@ -542,7 +603,7 @@
             MDButton:
                 style: "text"
                 pos_hint: {"center_x": 0.5}
-                on_release: app.go_to_login()
+                on_release: root.manager.current = "login"
                 MDButtonText:
                     text: "Déjà inscrit ? Se connecter"
 
@@ -555,7 +616,7 @@
         size_hint: .5, .5
         # Sets custom properties.
         theme_shadow_color: "Custom"
-        shadow_color: "green"
+        shadow_color: "black"
         theme_bg_color: "Custom"
         MDBoxLayout:
             orientation: "vertical"
@@ -586,7 +647,7 @@
             MDButton:
                 style: "text"
                 pos_hint: {"center_x": 0.5}
-                on_release: app.go_to_login()
+                on_release: root.manager.current = "login"
                 MDButtonText:
                     text: "Vous rappelez ? Se connecter"
 
@@ -598,7 +659,7 @@
         size_hint: .5, .5
         # Sets custom properties.
         theme_shadow_color: "Custom"
-        shadow_color: "green"
+        shadow_color: "black"
         theme_bg_color: "Custom"
         MDBoxLayout:
             orientation: "vertical"
@@ -634,7 +695,7 @@
             MDButton:
                 style: "text"
                 pos_hint: {"center_x": 0.5}
-                on_release: app.go_to_login()
+                on_release: root.manager.current = "login"
                 MDButtonText:
                     text: "Retour à la connexion"
 
@@ -646,7 +707,7 @@
         size_hint: .5, .5
         # Sets custom properties.
         theme_shadow_color: "Custom"
-        shadow_color: "green"
+        shadow_color: "black"
         theme_bg_color: "Custom"
         MDBoxLayout:
             orientation: "vertical"
@@ -685,13 +746,15 @@
                 style: "text"
                 md_gb_color: "red"
                 pos_hint: {"center_x": 0.5}
-                on_release: app.go_to_login()
+                on_release: root.manager.current = "login"
                 MDButtonText:
                     text: "Retour à la connexion"
 
 #
 MDScreenManager:
     md_bg_color: self.theme_cls.backgroundColor
+    LoginScreen:
+        name: "login"
     MainScreen:
         name: "screen A"
     DetailScreen:
