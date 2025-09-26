@@ -31,6 +31,7 @@ import os
 import sys
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
+import tempfile
 import urllib.parse
 
 class MainScreen(MDScreen):
@@ -631,7 +632,20 @@ class Gestion(MDApp):
     def on_start(self):
         self.afficher_heros_visiteurs()
         self.ouvrir_dialogue_login()
-    
+
+    def open_document(self, document):
+        blob, filename = self.document_manager.get_document_blob(document.id)
+        # créer un fichier temporaire
+        suffix = "." + filename.split(".")[-1]
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp.write(blob)
+        tmp.close()
+        # l’ouvrir dans le navigateur/application par défaut
+        webbrowser.open(tmp.name)
+        
+        # supprimer le fichier temporaire après un délai
+        Clock.schedule_once(lambda dt: os.remove(tmp.name), 300)
+
     def open_document_dialog(self):
         """_summary_: ouvre un dialogue contenant les documents partagés avec l'utilisateur.
         """
@@ -663,8 +677,8 @@ class Gestion(MDApp):
                 md_bg_color=self.theme_cls.transparentColor
             )
             open_icon = MDIconButton(
-                    icon="open-in-new",
-                    on_release=lambda x, path=doc.document_path: webbrowser.open(path)
+                    icon="eye-outline",
+                    on_release=lambda x, d=doc:self.open_document(d)
                 )
             content.add_widget(open_icon)
             return content
