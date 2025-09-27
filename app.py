@@ -2,7 +2,7 @@ from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import StringProperty, ObjectProperty
+from kivy.properties import StringProperty, ObjectProperty, BooleanProperty
 
 from kivymd.app import MDApp
 from kivymd.uix.hero import MDHeroFrom
@@ -228,6 +228,7 @@ class AccountScreen(MDScreen):
         self.ids.account_role.text = ""
 
 class LoginScreen(MDScreen):
+    show_login_password = BooleanProperty(True)
     def login(self):
         email = self.ids.login_email.text.rstrip()
         password = self.ids.login_password.text.rstrip()
@@ -635,6 +636,18 @@ class Gestion(MDApp):
             if day and str(d.day).zfill(2) != day.zfill(2):
                 continue
             result.append(v)
+        
+        if not result:
+            box = self.root.get_screen("screen A").ids.box
+            box.clear_widgets()
+            box.add_widget(MDLabel(
+                text=f"Aucun visiteur ne correspond aux critères de recherche, le {day} / {month} / {year}. Veuillez réessayer.",
+                halign="center",
+                size_hint_y=None,
+                height=dp(70)
+            ))
+            return
+            
         self.afficher_heros_visiteurs(result)
     
     def get_field(self, field_name):
