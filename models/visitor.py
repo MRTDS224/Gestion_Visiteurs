@@ -1,18 +1,25 @@
-import json
 import sqlite3
 from datetime import datetime
-from pathlib import Path
 import os
-from datetime import datetime, timezone
 from sqlalchemy import (
     create_engine, Column, Integer, String, LargeBinary,
     ForeignKey, DateTime, func, Text
 )
 from sqlalchemy.orm import relationship
-from models.user import Base, User
+from models.user import Base
 
-# Remonte d'un dossier pour pointer vers la racine du projet
-DB_PATH = Path(__file__).parent.parent / "database/visiteurs.db"
+def get_user_db_path():
+    # Windows : APPDATA ou fallback sur user home
+    base = os.getenv('APPDATA') or os.path.expanduser("~")
+    appdir = os.path.join(base, "GestionVisiteurs")
+    os.makedirs(appdir, exist_ok=True)
+    return os.path.join(appdir, "gestion_visiteurs.db")
+
+DB_PATH = get_user_db_path()
+ENGINE = create_engine(f"sqlite:///{DB_PATH}", echo=False, connect_args={"check_same_thread": False})
+# --- IMPORTANT : s'assurer que les tables SQLAlchemy existent dans la DB ---
+Base.metadata.create_all(ENGINE)
+
 
 class VisitorModel:
     def __init__(

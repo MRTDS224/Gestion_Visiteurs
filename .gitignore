@@ -1,8 +1,12 @@
 gestion_visiteurs_env/
 __pycache__/
+dist/
+build/
 *.pyc
 *.pyo
 *.pyd
 database/
 test.py
 .env
+.fake
+GestionVisiteurs.spec

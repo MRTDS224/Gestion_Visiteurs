@@ -34,6 +34,27 @@ import webbrowser
 import tempfile
 import urllib.parse
 
+
+from kivy.factory import Factory
+
+# S'assurer qu'une classe nommée MDDivider existe pour le Builder/KV
+try:
+    # tentative : import direct (si présent)
+    from kivymd.uix.divider import MDDivider as _MDDivider
+    Factory.register('MDDivider', cls=_MDDivider)
+except Exception:
+    try:
+        # compatibilité : certaines versions utilisent MDSeparator
+        from kivymd.uix.divider import MDSeparator as _MDDivider
+        Factory.register('MDDivider', cls=_MDDivider)
+    except Exception:
+        # fallback minimal (ne casse pas le Builder, simple widget vide)
+        from kivy.uix.widget import Widget
+        class MDDividerFallback(Widget):
+            pass
+        Factory.register('MDDivider', cls=MDDividerFallback)
+
+
 class MainScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -136,7 +157,6 @@ class MainScreen(MDScreen):
         app = MDApp.get_running_app()
         try:
             response = app.visitor_manager.revoke_share(share_id)
-            print(response)
             if not response:
                 app.show_error_dialog("Le partage est déjà révoqué ou n'existe pas.")
                 return
@@ -145,6 +165,7 @@ class MainScreen(MDScreen):
             return
         
         self.menu.dismiss()
+        self.dialog.dismiss()
         
         app.show_info_snackbar("Partage refusé.")
         
@@ -184,9 +205,9 @@ class AccountScreen(MDScreen):
         
         if pwd1 or pwd2:
             if pwd1 != pwd2:
-                return self.show_error_dialog("Les mots de passe doivent être identiques.")
+                return app.show_error_dialog("Les mots de passe doivent être identiques.")
             if len(pwd1) < 8:
-                return self.show_error_dialog("Le mot de passe doit faire au moins 8 caractères.")
+                return app.show_error_dialog("Le mot de passe doit faire au moins 8 caractères.")
         
         params = {}
         app = MDApp.get_running_app()
@@ -204,7 +225,8 @@ class AccountScreen(MDScreen):
             params["role"] = role
         
         if not params:
-            return self.show_info_snackbar("Aucune modification détectée.")
+            self.populate_fields()
+            return app.show_error_dialog("Aucune modification détectée.")
 
         # Appel au UserManager (décompactage des kwargs)
         try:
@@ -328,6 +350,19 @@ class Gestion(MDApp):
         
         if not visiteurs:
             return
+        
+        if len(visiteurs) == 0:
+            box.add_widget(MDLabel(
+                text="Aucun visiteur pour le moment.",
+                halign="center",
+                size_hint_y=None,
+                height=dp(70)
+            ))
+            return
+        
+        largeur = 0
+        if len(visiteurs) < 4:
+            largeur = 250    
             
         for visiteur in visiteurs:
             layout = MDCard(
@@ -349,6 +384,11 @@ class Gestion(MDApp):
                 font_size='12sp',
                 height=dp(30),
             ))
+            
+            if largeur != 0:
+                layout.size_hint_x = None
+                layout.width = dp(largeur)
+            
             box.add_widget(layout)
         
         if self.user is not None:
@@ -366,7 +406,7 @@ class Gestion(MDApp):
         screen.ids.btn_cancel.disabled = True
         
     def build(self):
-        return Builder.load_file("main.kv")
+        return Builder.load_file(self.resource_path("main.kv"))
 
     def build_form_content(self, contents=None):
         self.image_button = self.creer_bouton(
@@ -952,6 +992,11 @@ class Gestion(MDApp):
             self.show_error_dialog(str(e))
             self.root.current = "reset"
        
+    def resource_path(self, relative_path):
+        """Return absolute path to resource; works in dev and in PyInstaller bundle."""
+        base = getattr(sys, "_MEIPASS", os.path.abspath("."))
+        return os.path.join(base, relative_path)
+    
     def restart_app(self):
         python = sys.executable
         os.execl(python, python, *sys.argv)
