@@ -5,7 +5,6 @@ from kivy.metrics import dp
 from kivy.properties import StringProperty, ObjectProperty, BooleanProperty
 
 from kivymd.app import MDApp
-from kivymd.uix.hero import MDHeroFrom
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
 from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
@@ -17,6 +16,7 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
 from kivymd.uix.fitimage import FitImage
+from kivymd.uix.label import MDIcon
 from kivymd.uix.card import MDCard
 from kivy.uix.widget import Widget
 from kivy.utils import platform
@@ -170,7 +170,26 @@ class MainScreen(MDScreen):
         app.show_info_snackbar("Partage refusé.")
         
 class DetailScreen(MDScreen):
-    pass
+    def on_leave(self, *args):
+        self.ids.image.source = ""
+        self.ids.nom.text = ""
+        self.ids.prenom.text = ""
+        self.ids.phone_number.text = ""
+        self.ids.id_type.text = ""
+        self.ids.id_number.text = ""
+        self.ids.motif.text = ""
+        self.ids.date.text = ""
+        self.ids.arrival_time.text = ""
+        self.ids.exit_time.text = ""
+        self.ids.observation.text = ""
+        
+        self.ids.btn_delete.disabled = False
+        self.ids.btn_share.disabled = False
+        
+        app = MDApp.get_running_app()
+        app.selected_image_path = ""
+        app.visiteur = None
+        app.afficher_heros_visiteurs()
    
 class AccountScreen(MDScreen):
     def enable_butons(self):
@@ -313,7 +332,7 @@ class NewPasswordScreen(MDScreen):
         self.ids.new_password_second.text = ""
    
 class Gestion(MDApp):
-    visiteur = ObjectProperty()
+    visiteur = ObjectProperty(None, allownone=True)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.visitor_manager = VisitorManager()
@@ -322,7 +341,6 @@ class Gestion(MDApp):
         self.icon = "pictures/logo1.jpg"
         self.title = "G-Entry"
         self.dialog = None
-        self.menu = None
         self.user = None
         self.file_manager = MDFileManager(
             exit_manager=self.exit_file_manager,
@@ -333,7 +351,7 @@ class Gestion(MDApp):
         self.selected_image_path = ""
         self.menu = MDDropdownMenu(
             position="bottom",
-            width=dp(400),
+            width=dp(300),
         )
         
     def activer_boutons_modification(self):
@@ -360,9 +378,29 @@ class Gestion(MDApp):
             ))
             return
         
-        largeur = 0
-        if len(visiteurs) < 4:
-            largeur = 250    
+        box.add_widget(   
+            MDCard(
+                FitImage(
+                    source="pictures/add-user-icon.jpg",
+                    size_hint_y=None,
+                    height=dp(200)
+                ),
+                MDLabel(
+                    text="Ajouter un visiteur",
+                    halign="center",
+                    size_hint_y=None,
+                    height=dp(30),
+                    font_size='12sp',
+                ),
+                orientation="vertical",
+                padding=10,
+                ripple_behavior=True,
+                size_hint_y=None,
+                height=dp(250),
+                size_hint_x=0.2,
+                on_release=lambda x: self.show_visitor_details()
+            )
+        )
             
         for visiteur in visiteurs:
             layout = MDCard(
@@ -370,6 +408,7 @@ class Gestion(MDApp):
                 padding=10,
                 size_hint_y=None,
                 height=dp(250),
+                size_hint_x=0.2,
                 on_release=lambda x, v=visiteur: self.show_visitor_details(v)
             )
             layout.add_widget(FitImage(
@@ -380,20 +419,17 @@ class Gestion(MDApp):
             layout.add_widget(MDLabel(
                 text=f"{visiteur.nom} {visiteur.prenom}",
                 halign="left",
-                size_hint_y=None,
                 font_size='12sp',
+                size_hint_y=None,
                 height=dp(30),
             ))
-            
-            if largeur != 0:
-                layout.size_hint_x = None
-                layout.width = dp(largeur)
             
             box.add_widget(layout)
         
         if self.user is not None:
-            self.update_notification_badge()    
-            
+            self.update_notification_badge()
+            self.update_document_badge() 
+                
     def animer_bouton(self, bouton):
         anim = Animation(opacity=0.5, duration=0.1) + Animation(opacity=1, duration=0.1)
         anim.start(bouton)
@@ -407,56 +443,6 @@ class Gestion(MDApp):
         
     def build(self):
         return Builder.load_file(self.resource_path("main.kv"))
-
-    def build_form_content(self, contents=None):
-        self.image_button = self.creer_bouton(
-            "Sélectionner une image",
-            style="elevated",
-            icone="image",
-            on_release=lambda x: self.open_image_filechooser(),
-        )
-        self.nom_field = self.create_text_field("Entrez le nom")
-        self.prenom_field = self.create_text_field("Entrez le prénom")
-        self.phone_field = self.create_text_field("Entrez le numéro de téléphone")
-        self.id_type_field = self.create_text_field("Entrez le type de la pièce d'identité")
-        self.id_number_field = self.create_text_field("Entrez le numéro de la pièce d'identité")
-        self.motif_field = self.create_text_field("Entrez le motif de la visite")
-
-        self.id_type_field.bind(
-            focus=lambda instance, value: self.open_menu("id") if value else None
-        )
-        self.motif_field.bind(
-            focus=lambda instance, value: self.open_menu("motif") if value else None
-        )
-
-        # Limite la hauteur du formulaire et ajoute un scroll si besoin
-        form_layout = MDBoxLayout(
-            orientation="vertical",
-            spacing=20,
-            padding=10,
-            adaptive_height=True,
-            size_hint_y=None
-        )
-        for field in [
-            self.image_button,
-            self.nom_field, self.prenom_field, self.phone_field,
-            self.id_type_field, self.id_number_field, self.motif_field
-        ]:
-            form_layout.add_widget(field)
-        
-        if contents:
-            for content in contents:
-                form_layout.add_widget(content)
-        
-        form_layout.height = sum([field.height for field in form_layout.children])
-
-        scroll = ScrollView(
-            size_hint=(1, None),
-            height=(min(600, self.root_window.height * 0.8)),  # Limite la hauteur max à 80% de l'écran
-            do_scroll_x=False
-        )
-        scroll.add_widget(form_layout)
-        return scroll
     
     def check_code(self):
         token = self.root.get_screen("code_input").ids.reset_code.text
@@ -570,7 +556,7 @@ class Gestion(MDApp):
         try:
             screen = self.root.get_screen("screen B")
             
-            image = self.selected_image_path if self.selected_image_path else self.visiteur.image_path
+            image_path = self.selected_image_path if self.selected_image_path else self.visiteur.image_path
             nom = screen.ids.nom.text
             prenom = screen.ids.prenom.text
             phone_number = screen.ids.phone_number.text
@@ -582,12 +568,22 @@ class Gestion(MDApp):
             exit_time = screen.ids.exit_time.text
             observation = screen.ids.observation.text
 
+            if self.visiteur is None:
+                self.enregistrer_visiteur(
+                    image_path=image_path, nom=nom, prenom=prenom,
+                    phone_number=phone_number, id_type=id_type,
+                    id_number=id_number, motif=motif
+                )
+                screen.ids.btn_save.disabled = True
+                screen.ids.btn_cancel.disabled = True
+                return
+                
             if not all([nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time, exit_time, observation]):
                 self.show_error_dialog("Tous les champs sont obligatoires.")
                 return
 
             success, error = self.visitor_manager.mettre_a_jour_visiteur(
-                self.visiteur.id, image_path=image, nom=nom, prenom=prenom,
+                self.visiteur.id, image_path=image_path, nom=nom, prenom=prenom,
                 phone_number=phone_number, id_type=id_type,
                 id_number=id_number, motif=motif,
                 date=date, arrival_time=arrival_time,
@@ -610,17 +606,9 @@ class Gestion(MDApp):
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de la modification : {e}")
             
-    def enregistrer_visiteur(self):
+    def enregistrer_visiteur(self, image_path, nom, prenom, phone_number, id_type, id_number, motif):
         try:
-            image = self.selected_image_path
-            nom = self.nom_field.text
-            prenom = self.prenom_field.text
-            phone_number = self.phone_field.text
-            id_type = self.id_type_field.text
-            id_number = self.id_number_field.text
-            motif = self.motif_field.text
-
-            if not all([nom, prenom, phone_number, id_type, id_number, motif]):
+            if not all([image_path, nom, prenom, phone_number, id_type, id_number, motif]):
                 self.show_error_dialog("Tous les champs sont obligatoires.")
                 return
 
@@ -629,9 +617,7 @@ class Gestion(MDApp):
                 self.show_error_dialog(erreur)
                 return
 
-            self.visitor_manager.ajouter_visiteur(image, nom, prenom, phone_number, id_type, id_number, motif)
-            self.dialog.dismiss()
-            self.afficher_heros_visiteurs()            
+            self.visitor_manager.ajouter_visiteur(image_path, nom, prenom, phone_number, id_type, id_number, motif)         
             self.show_info_snackbar("Visiteur ajouté avec succès!")
 
         except Exception as e:
@@ -730,6 +716,8 @@ class Gestion(MDApp):
             return
         
         self.update_notification_badge()
+        self.update_document_badge()
+        
         self.root.current = "screen A"
         self.show_info_snackbar("Connexion réussie!")
              
@@ -811,15 +799,15 @@ class Gestion(MDApp):
         self.file_manager.show("C:/Users/mrtds/Pictures")
     
     def open_menu(self, field_name):
+        screen_ids = self.root.get_screen("screen B").ids
         if field_name == "id":
             items = [
                 {"text": "Passeport", "on_release": lambda x="Passeport": self.set_text(x, "id")},
                 {"text": "Carte", "on_release": lambda x="Carte": self.set_text(x, "id")},
             ]
             
-            self.menu.caller=self.id_type_field
+            self.menu.caller=screen_ids.id_type
             self.menu.items=items
-            self.menu.position="top"
             self.menu.open()
             
         elif field_name == "motif":
@@ -829,9 +817,8 @@ class Gestion(MDApp):
                 {"text": "Demande de prise en charge", "on_release": lambda x="Demande de prise en charge": self.set_text(x, "motif")},
                 {"text": "Légalisation", "on_release": lambda x="Légalisation": self.set_text(x, "motif")},
             ]
-            self.menu.caller=self.motif_field
+            self.menu.caller=screen_ids.motif
             self.menu.items=items
-            self.menu.position="top"
             self.menu.open()
             
         else:
@@ -867,24 +854,6 @@ class Gestion(MDApp):
             self.menu.width = dp(100)
             self.menu.open()
             
-    def ouvrir_dialogue_ajout_visiteur(self):
-        self.selected_image_path = ""
-        content = self.build_form_content()
-        actions = [
-            Widget(),
-            self.creer_bouton(
-                "Annuler",
-                style="text",
-                on_release=lambda x: self.dialog.dismiss()
-            ),
-            self.creer_bouton(
-                "Enregistrer",
-                style="elevated",
-                on_release=lambda x: self.enregistrer_visiteur()
-            ),
-        ]
-        self.dialog = self.creer_dialogue("Ajouter un visiteur", content, actions)
-    
     def ouvrir_dialogue_choix_destinataire_document(self):
         content = MDBoxLayout(orientation="vertical", spacing=10, adaptive_height=True)
         for user in self.user_manager.list_users():
@@ -939,6 +908,26 @@ class Gestion(MDApp):
             
     def remplir_champs(self):
         screen = self.root.get_screen("screen B")
+        if self.visiteur is None:
+            screen.ids.image.source = ""
+            screen.ids.nom.text = ""
+            screen.ids.prenom.text = ""
+            screen.ids.phone_number.text = ""
+            screen.ids.id_type.text = ""
+            screen.ids.id_number.text = ""
+            screen.ids.motif.text = ""
+            screen.ids.date.text = ""
+            screen.ids.arrival_time.text = ""
+            screen.ids.exit_time.text = ""
+            screen.ids.observation.text = ""
+            
+            screen.ids.btn_delete.disabled = True
+            screen.ids.btn_share.disabled = True
+            screen.ids.btn_save.disabled = True
+            screen.ids.btn_cancel.disabled = True
+            return
+        
+        # Remplit les champs avec les données du visiteur sélectionné
         screen.ids.image.source = self.visiteur.image_path
         screen.ids.nom.text = self.visiteur.nom
         screen.ids.prenom.text = self.visiteur.prenom
@@ -1005,7 +994,10 @@ class Gestion(MDApp):
         try:
             self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
+            
             self.update_notification_badge()
+            self.update_document_badge()
+            
             self.root.current = "screen A"
         except ValueError as e:
             self.show_error_dialog(str(e))
@@ -1026,12 +1018,14 @@ class Gestion(MDApp):
         self.menu.dismiss()
             
     def set_text(self, text, name):
+        screen_ids = self.root.get_screen("screen B").ids
         if name == "id":
-            self.id_type_field.text = text
+            screen_ids.id_type.text = text
         if name == "motif":
-            self.motif_field.text = text
+            screen_ids.motif.text = text
         
         self.menu.dismiss()
+        self.activer_boutons_modification()
     
     def select_file(self, path):
         if self.file_manager_mode == "document":
@@ -1051,8 +1045,7 @@ class Gestion(MDApp):
                 return
             self.file_manager.close()
             self.selected_image_path = path
-            if hasattr(self, "image_button"):
-                self.image_button.children[0].text = os.path.basename(path)
+            self.root.get_screen("screen B").ids.image.source = path
             self.file_manager_mode = None
             
             self.activer_boutons_modification()
@@ -1095,16 +1088,22 @@ class Gestion(MDApp):
             background_color="green"
         ).open()
   
-    def show_visitor_details(self, visiteur):
+    def show_visitor_details(self, visiteur=None):
         self.visiteur = visiteur
         self.remplir_champs()
+            
         self.root.current = "screen B"
         self.root.transition = SlideTransition(direction="left")
     
     def update_notification_badge(self):
         """Récupère et affiche le nombre de partages reçus."""
         shares = self.visitor_manager.get_shares_for_user(self.user.id)
-        self.root.get_screen("screen A").ids.badge.text = str(len(shares)) if shares else ""
+        self.root.get_screen("screen A").ids.ntf_badge.text = str(len(shares)) if shares else ""
+    
+    def update_document_badge(self):
+        """Récupère et affiche le nombre de documents partagés reçus."""
+        documents = self.document_manager.get_shares_for_user(self.user.id)
+        self.root.get_screen("screen A").ids.doc_badge.text = str(len(documents)) if documents else ""
         
     def valider_champs(self, nom, prenom, phone_number, id_type, id_number, motif):
         if not all([nom, prenom, phone_number, id_type, id_number, motif]):

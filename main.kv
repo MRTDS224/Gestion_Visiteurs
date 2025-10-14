@@ -62,23 +62,13 @@
                 pos_hint: {"center_y": 0.5}
                 on_release: app.renitialiser_filtre()
 
-            MDExtendedFabButton:
-                id: add_visitor_btn
-                height: dp(48)
-                pos_hint: {"center_y": 0.5}
-                on_press: self.fab_state = "expand" if self.fab_state == "collapse" else "collapse"
-                on_release: app.ouvrir_dialogue_ajout_visiteur()
-                MDExtendedFabButtonIcon:
-                    icon: "account-plus"
-                MDExtendedFabButtonText:
-                    text: "Ajouter un visiteur"
             MDIconButton:
                 icon: "bell"
                 style: "tonal"
                 pos_hint: {"center_y": 0.5}
                 on_release: root.open_notifications()
                 MDBadge:
-                    id: badge
+                    id: ntf_badge
                     text: ""
                     badge_color: "red"
                     badge_pos: ("right", "top")
@@ -102,6 +92,13 @@
                 icon_color: "#004D40"
                 pos_hint: {"center_y": 0.5}
                 on_release: app.open_document_dialog()
+                MDBadge:
+                    id: doc_badge
+                    text: ""
+                    badge_color: "red"
+                    badge_pos: ("right", "top")
+                    badge_animation: True
+                    badge_animation_type: "fade_in"
             MDIconButton:
                 icon: "account"
                 style: "tonal"
@@ -116,7 +113,7 @@
 
             MDGridLayout:
                 id: box
-                cols: 6
+                cols: 5
                 spacing: "12dp"
                 padding: "12dp"
                 adaptive_height: True
@@ -158,12 +155,14 @@
                 icon_color: "#C62828"
                 on_release: app.annuler_modifications()
             MDActionTopAppBarButton:
+                id: btn_delete
                 icon: "trash-can-outline"
                 md_bg_color: "#FFCDD2"
                 theme_icon_color: "Custom"
                 icon_color: "#C62828"
                 on_release: app.delete_visitor()
             MDActionTopAppBarButton:
+                id: btn_share
                 icon: "share"
                 md_bg_color: "#BBDEFB"
                 theme_icon_color: "Custom"
@@ -174,12 +173,12 @@
         padding: "20dp"
         spacing: "20dp"
         size_hint: .3, .5
-        pos_hint: {"top": .9}
+        pos_hint: {"top": .75}
         FitImage:
             id: image
             source: ""
             size_hint: None, None
-            size: dp(200), dp(200)
+            size: dp(300), dp(300)
 
         MDButton:
             style: "outlined"
@@ -234,7 +233,8 @@
             id: id_type
             on_text: app.activer_boutons_modification()
             size_hint: .6, None
-            height : dp(40)
+            height: dp(40)
+            on_focus: if self.focus: app.open_menu("id")
             
         MDLabel:
             size_hint: .4, None
@@ -255,6 +255,7 @@
             on_text: app.activer_boutons_modification()
             size_hint: .6, None
             height : dp(40)
+            on_focus: if self.focus: app.open_menu("motif")
             
         MDLabel:
             size_hint: .4, None
@@ -298,150 +299,149 @@
 
 #
 <AccountScreen>:
+    MDTopAppBar:
+        type: "small"
+        pos_hint: {"top": 1}
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDTopAppBarLeadingButtonContainer:
+
+            MDActionTopAppBarButton:
+                icon: "arrow-left"
+                on_release:
+                    root.manager.current = "screen A"
+
+        MDTopAppBarTitle:
+            text: "Bienvenue dans la gestion de votre compte"
+            halign: "center"
+
+    MDGridLayout:
+        id: box
+        cols: 2
+        spacing: "12dp"
+        padding: "12dp"
+        adaptive_height: True
+        size_hint_x: .7
+        pos_hint: {"top": .9, "x": .05}
+
+        MDLabel:
+            text: "Nom"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_last_name
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            required: True
+            on_text: root.enable_butons()
+        
+        MDLabel:
+            text: "Prenom"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_first_name
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            required: True
+            on_text: root.enable_butons()
+
+        MDLabel:
+            text: "Email"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_email
+            validator: "email"
+            required: True
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            on_text: root.enable_butons()
+
+        MDLabel:
+            text: "Rôle"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_role
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            required: True
+            on_text: root.enable_butons()
+
+        MDLabel:
+            text: "Mot de passe"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_password_first
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            password: True
+            required: True
+            on_text: root.enable_butons()
+
+        MDLabel:
+            text: "Mot de passe à nouveau"
+            size_hint_x: .4
+            size_hint_y: None
+            height: dp(40)
+        MDTextField:
+            id: account_password_second
+            size_hint_x: .6
+            size_hint_y: None
+            height: dp(40)
+            password: True
+            required: True
+            on_text: root.enable_butons()
+        
+
     MDBoxLayout:
-        orientation: "vertical"
+        orientation: "horizontal"
         padding: "20dp"
         spacing: "20dp"
-        MDLabel:
-            text: "Bienvenue dans la gestion de votre compte"
-            font_style: "Title"
-            halign: "center"
-            valign: "middle"
-            bold: True
-        MDGridLayout:
-            id: box
-            cols: 2
-            spacing: "12dp"
-            padding: "12dp"
-            adaptive_height: True
-            size_hint_x: .7
-
-            MDLabel:
-                text: "Nom"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_last_name
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                required: True
-                on_text: root.enable_butons()
-            
-            MDLabel:
-                text: "Prenom"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_first_name
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                required: True
-                on_text: root.enable_butons()
-
-            MDLabel:
-                text: "Email"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_email
-                validator: "email"
-                required: True
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                on_text: root.enable_butons()
-
-            MDLabel:
-                text: "Rôle"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_role
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                required: True
-                on_text: root.enable_butons()
-
-            MDLabel:
-                text: "Mot de passe"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_password_first
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                password: True
-                required: True
-                on_text: root.enable_butons()
-
-            MDLabel:
-                text: "Mot de passe à nouveau"
-                size_hint_x: .4
-                size_hint_y: None
-                height: dp(40)
-            MDTextField:
-                id: account_password_second
-                size_hint_x: .6
-                size_hint_y: None
-                height: dp(40)
-                password: True
-                required: True
-                on_text: root.enable_butons()
-            
-
-        MDBoxLayout:
-            orientation: "horizontal"
-            padding: "20dp"
-            spacing: "20dp"
-            
-            MDButton:
-                id: btn_cancel
-                style: "text"
-                disabled: True
-                on_release: root.annuler_modification_utilisateur()
-                MDButtonText:
-                    text: "Annuler"
-                MDButtonIcon:
-                    icon: "cancel-save"
-            MDButton:
-                id: btn_save
-                style: "elevated"
-                disabled: True
-                on_release: root.update_user()
-                MDButtonText:
-                    text: "Sauvegarder"
-                MDButtonIcon:
-                    icon: "content-save"
+        pos_hint: {"y": 0.2}
         
         MDButton:
+            id: btn_cancel
             style: "text"
-            on_release: 
-                root.manager.current = "screen A"
+            disabled: True
+            on_release: root.annuler_modification_utilisateur()
             MDButtonText:
                 text: "Annuler"
             MDButtonIcon:
-                icon: "arrow-left"
-        
+                icon: "cancel-save"
         MDButton:
-            style: "outlined"
-            pos_hint: {"center_x": 0.5}
-            md_bg_color: "red"
-            text_color: "white"
-            on_release: root.manager.current = "login"
+            id: btn_save
+            style: "elevated"
+            disabled: True
+            on_release: root.update_user()
             MDButtonText:
-                text: "Deconnexion"
+                text: "Sauvegarder"
             MDButtonIcon:
-                icon: "logout"
-
+                icon: "content-save"
+    
+    
+    MDButton:
+        style: "outlined"
+        pos_hint: {"center_x": 0.5, "y": 0.1}
+        md_bg_color: "red"
+        text_color: "white"
+        on_release: root.manager.current = "login"
+        MDButtonText:
+            text: "Deconnexion"
+        MDButtonIcon:
+            icon: "logout"
 #
 <LoginScreen>:
     MDCard:
