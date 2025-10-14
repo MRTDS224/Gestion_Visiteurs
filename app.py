@@ -9,7 +9,6 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
 from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLeadingIcon
-from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.menu import MDDropdownMenu
@@ -27,12 +26,14 @@ from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
 from managers.document_manager import DocumentManager
+from helpers import resource_path
 import os
 import sys
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import tempfile
 import urllib.parse
+from plyer import filechooser
 
 
 from kivy.factory import Factory
@@ -318,6 +319,7 @@ class SignupScreen(MDScreen):
         self.ids.signup_password_first.text = ""
         self.ids.signup_password_second.text = ""
         self.ids.signup_role.text = ""
+
 class ResetPasswordScreen(MDScreen):
     def on_leave(self, *args):
         self.ids.reset_email.text = ""
@@ -338,14 +340,10 @@ class Gestion(MDApp):
         self.visitor_manager = VisitorManager()
         self.user_manager = UserManager()
         self.document_manager = DocumentManager()
-        self.icon = "pictures/logo1.jpg"
+        self.icon = resource_path("pictures/logo1.jpg")
         self.title = "G-Entry"
         self.dialog = None
         self.user = None
-        self.file_manager = MDFileManager(
-            exit_manager=self.exit_file_manager,
-            select_path=self.select_file,
-        )
         self.file_manager_mode = None
         self.selected_document_path = ""
         self.selected_image_path = ""
@@ -381,7 +379,7 @@ class Gestion(MDApp):
         box.add_widget(   
             MDCard(
                 FitImage(
-                    source="pictures/add-user-icon.jpg",
+                    source=resource_path("pictures/add-user-icon.jpg"),
                     size_hint_y=None,
                     height=dp(200)
                 ),
@@ -442,7 +440,7 @@ class Gestion(MDApp):
         screen.ids.btn_cancel.disabled = True
         
     def build(self):
-        return Builder.load_file(self.resource_path("main.kv"))
+        return Builder.load_file(resource_path("main.kv"))
     
     def check_code(self):
         token = self.root.get_screen("code_input").ids.reset_code.text
@@ -556,7 +554,13 @@ class Gestion(MDApp):
         try:
             screen = self.root.get_screen("screen B")
             
-            image_path = self.selected_image_path if self.selected_image_path else self.visiteur.image_path
+            if self.selected_image_path:
+                image_path = self.selected_image_path
+            elif self.visiteur and self.visiteur.image_path:
+                image_path = self.visiteur.image_path
+            else:
+                image_path = ""
+
             nom = screen.ids.nom.text
             prenom = screen.ids.prenom.text
             phone_number = screen.ids.phone_number.text
@@ -792,11 +796,17 @@ class Gestion(MDApp):
         
     def open_document_filechooser(self):
         self.file_manager_mode = "document"
-        self.file_manager.show("C:/Users/mrtds/Documents")
+        filechooser.open_file(
+            filters=["(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "*"],
+            on_selection=self.select_file
+        )
 
     def open_image_filechooser(self):
         self.file_manager_mode = "image"
-        self.file_manager.show("C:/Users/mrtds/Pictures")
+        filechooser.open_file(
+            filters=["(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)"],
+            on_selection=self.select_file
+        )
     
     def open_menu(self, field_name):
         screen_ids = self.root.get_screen("screen B").ids
@@ -980,12 +990,7 @@ class Gestion(MDApp):
         except ValueError as e:
             self.show_error_dialog(str(e))
             self.root.current = "reset"
-       
-    def resource_path(self, relative_path):
-        """Return absolute path to resource; works in dev and in PyInstaller bundle."""
-        base = getattr(sys, "_MEIPASS", os.path.abspath("."))
-        return os.path.join(base, relative_path)
-    
+           
     def restart_app(self):
         python = sys.executable
         os.execl(python, python, *sys.argv)
@@ -1027,29 +1032,31 @@ class Gestion(MDApp):
         self.menu.dismiss()
         self.activer_boutons_modification()
     
-    def select_file(self, path):
+    def select_file(self, selection):
+        if not selection:
+            return
+
+        path = selection[0]
+
         if self.file_manager_mode == "document":
             if not path.lower().endswith(('.pdf', '.txt', '.doc', '.docx')):
                 self.show_error_dialog("Veuillez sélectionner un fichier PDF, TXT ou DOC valide.")
                 return
-            self.file_manager.close()
+
             self.selected_document_path = path
             self.file_manager_mode = None
-            
-            # Ouvre le dialogue pour choisir le destinataire
             self.ouvrir_dialogue_choix_destinataire_document()
-            
+
         elif self.file_manager_mode == "image":
             if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                 self.show_error_dialog("Veuillez sélectionner un fichier image valide.")
                 return
-            self.file_manager.close()
+
             self.selected_image_path = path
             self.root.get_screen("screen B").ids.image.source = path
             self.file_manager_mode = None
-            
             self.activer_boutons_modification()
-    
+
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]
         self.document_manager.share_document(from_user_id, to_user_id, document_path, document_type)

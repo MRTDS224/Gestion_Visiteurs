@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 from typing import Optional, Tuple, List
 import os
+from helpers import resource_path
 
 class VisitorManager:
     def __init__(self):
@@ -124,7 +125,10 @@ class VisitorManager:
             
             # Générer un nom de fichier unique
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            image_path = os.path.join("pictures/ID", f"imported_image_{share_id}_{timestamp}.jpg")
+            
+            image_dir = resource_path(os.path.join("pictures", "ID"))
+            os.makedirs(image_dir, exist_ok=True)
+            image_path = os.path.join(image_dir, f"imported_image_{share_id}_{timestamp}.jpg")
             
             visitor = VisitorModel(
                 id=None,
