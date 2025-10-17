@@ -33,7 +33,31 @@ class DocumentManager:
         return None, None
 
     def get_shares_for_user(self, user_id):
+        return (
+            self.session.query(DocumentShare)
+            .filter(
+                DocumentShare.shared_to_user_id == user_id,
+                DocumentShare.status != "revoked"
+            )
+            .all()
+        )
+    
+    def get_active_shares_for_user(self, user_id):
         return self.session.query(DocumentShare).filter_by(shared_to_user_id=user_id, status="active").all()
+    
+    def edit_share_status(self, share: DocumentShare):
+        """
+        Met à jour le statut d'un partage en notified
+
+        Args:
+            share : Est un objet DocumentShare
+        """
+        session = self.session
+        try:
+            share.status = "notified"
+            session.commit()
+        finally:
+            session.close()
 
     def revoke_share(self, share_id):
         share = self.session.get(DocumentShare, share_id)

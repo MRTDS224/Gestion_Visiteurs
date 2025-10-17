@@ -25,6 +25,7 @@ from kivymd.uix.list import MDList, MDListItem, MDListItemLeadingIcon, MDListIte
 from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
+from models.user import User
 from managers.document_manager import DocumentManager
 from helpers import resource_path
 import os
@@ -33,7 +34,7 @@ from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import tempfile
 import urllib.parse
-from plyer import filechooser
+from plyer import filechooser, notification
 
 
 from kivy.factory import Factory
@@ -106,6 +107,11 @@ class MainScreen(MDScreen):
         
     def open_notifications(self):
         """Ouvre un dialogue listant les notifications par ordre d’arrivée."""
+        app = MDApp.get_running_app()
+        user_id = app.user.id
+        shares = app.visitor_manager.get_shares_for_user(user_id)
+        shares_sorted = sorted(shares, key=lambda s: s.shared_at)
+        
         def format_share(share):
             shared_by_user = MDApp.get_running_app().user_manager.get_user_by_id(share.shared_by_user_id)
             ts = share.shared_at.strftime("%d/%m/%Y %H:%M")
@@ -131,28 +137,8 @@ class MainScreen(MDScreen):
             content.add_widget(icon)
             return content
         
-        app = MDApp.get_running_app()
-        user_id = app.user.id
-        shares = app.visitor_manager.get_shares_for_user(user_id)
+        app.open_share_dialog("Visiteur partagé avec vous", shares_sorted, format_share)
         
-        # Trier par shared_at ascendant
-        shares_sorted = sorted(shares, key=lambda s: s.shared_at)
-        content = MDList(spacing=10)
-        for share in shares_sorted:
-            content.add_widget(
-                format_share(share)
-            )
-
-        # Construire et ouvrir le MDDialog
-        self.dialog = MDDialog(
-            MDDialogHeadlineText(text="Notifications de partage", halign="left", valign="top"),
-            MDDialogContentContainer(content),
-            adaptive_height=True,
-            auto_dismiss=True,
-            md_bg_color="white"
-        )
-        self.dialog.open()
-    
     def refuse_share(self, share_id):
         """Refuse un partage de visiteur."""
         app = MDApp.get_running_app()
@@ -427,6 +413,9 @@ class Gestion(MDApp):
         if self.user is not None:
             self.update_notification_badge()
             self.update_document_badge() 
+            
+            self.notify_new_items(self.visitor_manager, "visitor")
+            self.notify_new_items(self.document_manager, "document")
                 
     def animer_bouton(self, bouton):
         anim = Animation(opacity=0.5, duration=0.1) + Animation(opacity=1, duration=0.1)
@@ -496,18 +485,16 @@ class Gestion(MDApp):
             MDDialogHeadlineText(text=titre, halign="left"),
             MDDialogContentContainer(content),
         )
-        dialog.add_widget(
-            MDDialogButtonContainer(
-                *actions,
-                spacing="10dp"
-            )
-        )
-        dialog.auto_dismiss = False
+        dialog.adaptive_height = True
         
-        if titre == "Connexion":
-            self.root.opacity = 0.1
-            dialog.bind(on_dismiss=lambda *args: setattr(self.root, 'opacity', 1))
-
+        if actions:
+            dialog.add_widget(
+                MDDialogButtonContainer(
+                    *actions,
+                    spacing="10dp"
+                )
+            )
+            dialog.auto_dismiss = False
             
         dialog.open()
         return dialog
@@ -724,6 +711,28 @@ class Gestion(MDApp):
         
         self.root.current = "screen A"
         self.show_info_snackbar("Connexion réussie!")
+    
+    def notify_new_items(self, manager, item_type: str):
+        items = manager.get_active_shares_for_user(self.user.id)
+        if not items:
+            return
+
+        for item in items:
+            shared_by_user = self.user_manager.get_user_by_id(item.shared_by_user_id)
+            self.notify_new_share(shared_by_user, item_type)
+            manager.edit_share_status(item)
+      
+    def notify_new_share(self, shared_by_user: User, share_type: str):
+        try:
+            notification.notify(
+                title=f"Nouveau {share_type} reçu",
+                message=f"Vous avez reçu un {share_type} de la part de {shared_by_user.prenom} {shared_by_user.nom}.",
+                app_name="GestionVisiteurs",
+                app_icon=resource_path("pictures/icone.ico"),
+                timeout=5
+            )
+        except Exception as e:
+            print(f"Erreur lors de l'envoi de la notification : {e}")
              
     def on_start(self):
         self.afficher_heros_visiteurs()
@@ -754,7 +763,7 @@ class Gestion(MDApp):
         def format_document(doc):
             shared_by_user = self.user_manager.get_user_by_id(doc.shared_by_user_id)
             ts = doc.shared_at.strftime("%d/%m/%Y %H:%M")
-            content =  MDListItem(
+            item =  MDListItem(
                 MDListItemLeadingIcon(
                     icon="file",
                 ),
@@ -771,28 +780,46 @@ class Gestion(MDApp):
                 theme_bg_color="Custom",
                 md_bg_color=self.theme_cls.transparentColor
             )
-            open_icon = MDIconButton(
+            item.add_widget(MDIconButton(
                     icon="eye-outline",
                     on_release=lambda x, d=doc:self.open_document(d)
                 )
-            content.add_widget(open_icon)
-            return content
-        
-        content = MDList(spacing=10)
-        for doc in documents:
-            content.add_widget(
-                format_document(doc)
             )
-
-        # Construire et ouvrir le MDDialog
-        self.dialog = MDDialog(
-            MDDialogHeadlineText(text="Documents partagés avec vous", halign="left", valign="top"),
-            MDDialogContentContainer(content),
-            adaptive_height=True,
-            auto_dismiss=True,
-            md_bg_color="white"
+            return item
+        
+        self.open_share_dialog(
+            title="Documents partagés avec vous",
+            items=documents,
+            formatter=format_document
         )
-        self.dialog.open()
+    
+    def open_share_dialog(self, title: str, items: list, formatter: callable):
+        """
+        Affiche un MDDialog contenant une liste scrollable d'éléments formatés.
+        
+        :param title: Titre du dialogue
+        :param items: Liste des objets à afficher
+        :param formatter: Fonction qui retourne un widget formaté pour chaque objet
+        """
+        if not items:
+            self.show_info_snackbar("Aucun élément à afficher pour le moment.")
+            return
+
+        content = MDList(spacing=10, size_hint_y=None, adaptive_height=True)
+        for item in items:
+            content.add_widget(formatter(item))
+
+        content.bind(minimum_height=content.setter('height'))
+        scroll = ScrollView(
+            size_hint_y=None,
+            height=dp(400),
+            bar_width=dp(4),
+            scroll_type=['bars', 'content'],
+            do_scroll_x=False
+        )
+        scroll.add_widget(content)
+
+        self.dialog = self.creer_dialogue(title, scroll, actions=[])
         
     def open_document_filechooser(self):
         self.file_manager_mode = "document"

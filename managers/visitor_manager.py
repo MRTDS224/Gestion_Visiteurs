@@ -90,7 +90,7 @@ class VisitorManager:
         finally:
             session.close()
 
-    def get_shares_for_user(self, user_id):
+    def get_active_shares_for_user(self, user_id):
         """Liste les partages reçus par un utilisateur."""
         session = self.session
         try:
@@ -101,7 +101,31 @@ class VisitorManager:
             )
         finally:
             session.close()
+    
+    def get_shares_for_user(self, user_id):
+        return (
+            self.session.query(VisitorShare)
+            .filter(
+                VisitorShare.shared_with_user_id == user_id,
+                VisitorShare.status != "revoked"
+            )
+            .all()
+        )
+    
+    def edit_share_status(self, share: VisitorShare):
+        """
+        Met à jour le statut d'un partage en notified
 
+        Args:
+            share : Est un objet VisitorShare
+        """
+        session = self.session
+        try:
+            share.status = "notified"
+            session.commit()
+        finally:
+            session.close()
+        
     def revoke_share(self, share_id):
         """Révoque un partage existant."""
         session = self.session
