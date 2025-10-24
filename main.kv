@@ -207,7 +207,7 @@
             
         MDLabel:
             size_hint: .4, None
-            text: "Prenom"
+            text: "Prénom"
             height : dp(40)
         MDTextField:
             id: prenom
@@ -224,6 +224,34 @@
             on_text: app.activer_boutons_modification()
             size_hint: .6, None
             height : dp(40)
+        
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint: .5, None
+            height : dp(40)
+            MDLabel:
+                size_hint: .2, None
+                height : dp(40)
+                text: "Date de naissance"    
+            MDTextField:
+                id: date_of_birth
+                on_text: app.activer_boutons_modification()
+                size_hint: .3, None
+                height : dp(40)
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint: .5, None
+            height : dp(40)
+            
+            MDLabel:
+                size_hint: .2, None
+                height : dp(40)
+                text: "Lieu de naissance"    
+            MDTextField:
+                id: place_of_birth
+                on_text: app.activer_boutons_modification()
+                size_hint: .3, None
+                height : dp(40)            
         
         MDLabel:
             size_hint: .4, None

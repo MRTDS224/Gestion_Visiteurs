@@ -10,12 +10,12 @@ class VisitorManager:
     def __init__(self):
         self.session = UserManager().Session()
         
-    def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
+    def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, date_of_birth: str, place_of_birth: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
         """Ajoute un visiteur et le sauvegarde. Retourne le VisitorModel et un message d'erreur éventuel."""
-        visitor_id = db.add_visitor(image_path, nom, prenom, phone_number, id_type, id_number, motif)
+        visitor_id = db.add_visitor(image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)
         if not visitor_id:
             return None, "Erreur lors de l'ajout du visiteur"
-        return VisitorModel(visitor_id, image_path, nom, prenom, phone_number, id_type, id_number, motif), None
+        return VisitorModel(visitor_id, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif), None
 
     def supprimer_visiteur(self, visitor_id: int) -> Tuple[bool, Optional[str]]:
         """Supprime un visiteur par son identifiant unique dans la base de données."""
@@ -75,6 +75,8 @@ class VisitorManager:
                 shared_with_user_id=shared_with_id,
                 nom=visitor.nom,
                 prenom=visitor.prenom,
+                date_of_birth=visitor.date_of_birth,
+                place_of_birth=visitor.place_of_birth,
                 id_type=visitor.id_type,
                 id_number=visitor.id_number,
                 phone_number=visitor.phone_number,
@@ -160,6 +162,8 @@ class VisitorManager:
                 nom=share.nom,
                 prenom=share.prenom,
                 phone_number=share.phone_number,
+                date_of_birth=share.date_of_birth,
+                place_of_birth=share.place_of_birth,
                 id_type=share.id_type,
                 id_number=share.id_number,
                 motif=share.motif,
@@ -173,6 +177,8 @@ class VisitorManager:
                 visitor.nom,
                 visitor.prenom,
                 visitor.phone_number,
+                visitor.date_of_birth,
+                visitor.place_of_birth,
                 visitor.id_type,
                 visitor.id_number,
                 visitor.motif

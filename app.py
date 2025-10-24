@@ -1,3 +1,6 @@
+import os
+os.environ['KIVY_GL_BACKEND'] = 'sdl2'
+
 from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.lang import Builder
@@ -28,14 +31,12 @@ from managers.user_manager import UserManager
 from models.user import User
 from managers.document_manager import DocumentManager
 from helpers import resource_path
-import os
 import sys
 from datetime import datetime, date, timezone, timedelta
 import webbrowser
 import tempfile
 import urllib.parse
 from plyer import filechooser, notification
-
 
 from kivy.factory import Factory
 
@@ -55,6 +56,8 @@ except Exception:
         class MDDividerFallback(Widget):
             pass
         Factory.register('MDDivider', cls=MDDividerFallback)
+
+__version__ = "1.0.0"
 
 
 class MainScreen(MDScreen):
@@ -76,7 +79,9 @@ class MainScreen(MDScreen):
             app.show_error_dialog(f"Erreur lors de l'acceptation du partage : {e}")
             return
         
-        self.menu.dismiss()
+        if self.menu:
+            self.menu.dismiss()
+            
         self.dialog.dismiss()
         app.show_info_snackbar("Partage accepté. visiteur ajouté à votre liste.")
         app.afficher_heros_visiteurs()
@@ -109,7 +114,7 @@ class MainScreen(MDScreen):
         """Ouvre un dialogue listant les notifications par ordre d’arrivée."""
         app = MDApp.get_running_app()
         user_id = app.user.id
-        shares = app.visitor_manager.get_shares_for_user(user_id)
+        shares = app.visitor_manager.get_active_shares_for_user(user_id)
         shares_sorted = sorted(shares, key=lambda s: s.shared_at)
         
         def format_share(share):
@@ -162,6 +167,8 @@ class DetailScreen(MDScreen):
         self.ids.nom.text = ""
         self.ids.prenom.text = ""
         self.ids.phone_number.text = ""
+        self.ids.date_of_birth.text = ""
+        self.ids.place_of_birth.text = ""
         self.ids.id_type.text = ""
         self.ids.id_number.text = ""
         self.ids.motif.text = ""
@@ -337,6 +344,9 @@ class Gestion(MDApp):
             position="bottom",
             width=dp(300),
         )
+        self._notified_share_ids = set()
+        self._notified_doc_ids = set()
+        self._notify_poll_interval = 10
         
     def activer_boutons_modification(self):
         screen = self.root.get_screen("screen B")
@@ -349,18 +359,6 @@ class Gestion(MDApp):
         
         if visiteurs is None:
             visiteurs = self.visitor_manager.lister_visiteurs()
-        
-        if not visiteurs:
-            return
-        
-        if len(visiteurs) == 0:
-            box.add_widget(MDLabel(
-                text="Aucun visiteur pour le moment.",
-                halign="center",
-                size_hint_y=None,
-                height=dp(70)
-            ))
-            return
         
         box.add_widget(   
             MDCard(
@@ -551,6 +549,8 @@ class Gestion(MDApp):
             nom = screen.ids.nom.text
             prenom = screen.ids.prenom.text
             phone_number = screen.ids.phone_number.text
+            date_of_birth = screen.ids.date_of_birth.text
+            place_of_birth = screen.ids.place_of_birth.text
             id_type = screen.ids.id_type.text
             id_number = screen.ids.id_number.text
             motif = screen.ids.motif.text
@@ -562,20 +562,21 @@ class Gestion(MDApp):
             if self.visiteur is None:
                 self.enregistrer_visiteur(
                     image_path=image_path, nom=nom, prenom=prenom,
-                    phone_number=phone_number, id_type=id_type,
+                    phone_number=phone_number, date_of_birth=date_of_birth,
+                    place_of_birth=place_of_birth, id_type=id_type,
                     id_number=id_number, motif=motif
                 )
                 screen.ids.btn_save.disabled = True
                 screen.ids.btn_cancel.disabled = True
                 return
                 
-            if not all([nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time, exit_time, observation]):
-                self.show_error_dialog("Tous les champs sont obligatoires.")
-                return
+            if not all([nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif, date, arrival_time, exit_time, observation]):
+                return self.show_error_dialog("Tous les champs doivent être remplis pour enregistrer les modifications.")
 
             success, error = self.visitor_manager.mettre_a_jour_visiteur(
                 self.visiteur.id, image_path=image_path, nom=nom, prenom=prenom,
-                phone_number=phone_number, id_type=id_type,
+                phone_number=phone_number, date_of_birth=date_of_birth,
+                place_of_birth=place_of_birth, id_type=id_type,
                 id_number=id_number, motif=motif,
                 date=date, arrival_time=arrival_time,
                 exit_time=exit_time, observation=observation
@@ -597,18 +598,14 @@ class Gestion(MDApp):
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de la modification : {e}")
             
-    def enregistrer_visiteur(self, image_path, nom, prenom, phone_number, id_type, id_number, motif):
+    def enregistrer_visiteur(self, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif):
         try:
-            if not all([image_path, nom, prenom, phone_number, id_type, id_number, motif]):
-                self.show_error_dialog("Tous les champs sont obligatoires.")
-                return
-
-            erreur = self.valider_champs(nom, prenom, phone_number, id_type, id_number, motif)
+            erreur = self.valider_champs(nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)
             if erreur:
                 self.show_error_dialog(erreur)
                 return
 
-            self.visitor_manager.ajouter_visiteur(image_path, nom, prenom, phone_number, id_type, id_number, motif)         
+            self.visitor_manager.ajouter_visiteur(image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)         
             self.show_info_snackbar("Visiteur ajouté avec succès!")
 
         except Exception as e:
@@ -686,6 +683,8 @@ class Gestion(MDApp):
             f"Nom : {visiteur.nom}\n"
             f"Prénom : {visiteur.prenom}\n"
             f"Téléphone : {visiteur.phone_number}\n"
+            f"Date de naissance : {visiteur.date_of_birth}\n"
+            f"Lieu de naissance : {visiteur.place_of_birth}\n"
             f"Pièce d'identité : {visiteur.id_type} - {visiteur.id_number}\n"
             f"Motif : {visiteur.motif}\n"
             f"Date : {visiteur.date}\n"
@@ -713,7 +712,7 @@ class Gestion(MDApp):
         self.show_info_snackbar("Connexion réussie!")
     
     def notify_new_items(self, manager, item_type: str):
-        items = manager.get_active_shares_for_user(self.user.id)
+        items = manager.get_shares_for_user(self.user.id)
         if not items:
             return
 
@@ -736,6 +735,43 @@ class Gestion(MDApp):
              
     def on_start(self):
         self.afficher_heros_visiteurs()
+        Clock.schedule_interval(self._poll_for_new_items, self._notify_poll_interval)
+    
+    def _poll_for_new_items(self, dt):
+        """Poll périodique : récupère les partages/documents actifs et notifie."""
+        if not self.user:
+            return
+
+        # visitors
+        try:
+            shares = self.visitor_manager.get_active_shares_for_user(self.user.id)
+            for s in shares:
+                if s.id not in self._notified_share_ids:
+                    shared_by_user = self.user_manager.get_user_by_id(s.shared_by_user_id)
+                    self.notify_new_share(shared_by_user, "visiteur")
+                    # marque comme traité (ton manager semble proposer cette méthode)
+                    try:
+                        self.visitor_manager.edit_share_status(s)
+                    except Exception:
+                        pass
+                    self._notified_share_ids.add(s.id)
+        except Exception:
+            pass
+
+        # documents
+        try:
+            docs = self.document_manager.get_active_shares_for_user(self.user.id)
+            for d in docs:
+                if d.id not in self._notified_doc_ids:
+                    shared_by_user = self.user_manager.get_user_by_id(d.shared_by_user_id)
+                    self.notify_new_share(shared_by_user, "document")
+                    try:
+                        self.document_manager.edit_share_status(d)
+                    except Exception:
+                        pass
+                    self._notified_doc_ids.add(d.id)
+        except Exception:
+            pass
 
     def open_document(self, document):
         blob, filename = self.document_manager.get_document_blob(document.id)
@@ -950,6 +986,8 @@ class Gestion(MDApp):
             screen.ids.nom.text = ""
             screen.ids.prenom.text = ""
             screen.ids.phone_number.text = ""
+            screen.ids.date_of_birth.text = ""
+            screen.ids.place_of_birth.text = ""
             screen.ids.id_type.text = ""
             screen.ids.id_number.text = ""
             screen.ids.motif.text = ""
@@ -969,6 +1007,8 @@ class Gestion(MDApp):
         screen.ids.nom.text = self.visiteur.nom
         screen.ids.prenom.text = self.visiteur.prenom
         screen.ids.phone_number.text = self.visiteur.phone_number
+        screen.ids.date_of_birth.text = self.visiteur.date_of_birth or ""
+        screen.ids.place_of_birth.text = self.visiteur.place_of_birth or ""
         screen.ids.id_type.text = self.visiteur.id_type
         screen.ids.id_number.text = self.visiteur.id_number
         screen.ids.motif.text = self.visiteur.motif
@@ -1131,7 +1171,7 @@ class Gestion(MDApp):
     
     def update_notification_badge(self):
         """Récupère et affiche le nombre de partages reçus."""
-        shares = self.visitor_manager.get_shares_for_user(self.user.id)
+        shares = self.visitor_manager.get_active_shares_for_user(self.user.id)
         self.root.get_screen("screen A").ids.ntf_badge.text = str(len(shares)) if shares else ""
     
     def update_document_badge(self):
@@ -1139,8 +1179,8 @@ class Gestion(MDApp):
         documents = self.document_manager.get_shares_for_user(self.user.id)
         self.root.get_screen("screen A").ids.doc_badge.text = str(len(documents)) if documents else ""
         
-    def valider_champs(self, nom, prenom, phone_number, id_type, id_number, motif):
-        if not all([nom, prenom, phone_number, id_type, id_number, motif]):
+    def valider_champs(self, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif):
+        if not all([nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif]):
             return "Tous les champs sont obligatoires."
         if not phone_number.isdigit() or len(phone_number) < 10:
             return "Numéro de téléphone invalide."

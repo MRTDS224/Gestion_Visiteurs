@@ -7,6 +7,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from models.user import Base
+from helpers import resource_path
 
 def get_user_db_path():
     # Windows : APPDATA ou fallback sur user home
@@ -15,7 +16,7 @@ def get_user_db_path():
     os.makedirs(appdir, exist_ok=True)
     return os.path.join(appdir, "gestion_visiteurs.db")
 
-DB_PATH = get_user_db_path()
+DB_PATH = resource_path(os.path.join("database", "visiteurs.db"))
 ENGINE = create_engine(f"sqlite:///{DB_PATH}", echo=False, connect_args={"check_same_thread": False})
 # --- IMPORTANT : s'assurer que les tables SQLAlchemy existent dans la DB ---
 Base.metadata.create_all(ENGINE)
@@ -23,7 +24,7 @@ Base.metadata.create_all(ENGINE)
 
 class VisitorModel:
     def __init__(
-        self, id, image_path, nom, prenom, phone_number, id_type, id_number, motif,
+        self, id, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif,
         date=None, arrival_time=None, exit_time="", observation=""
     ):
         self.id = id
@@ -31,6 +32,8 @@ class VisitorModel:
         self.nom = nom
         self.prenom = prenom
         self.phone_number = phone_number
+        self.date_of_birth = date_of_birth
+        self.place_of_birth = place_of_birth
         self.id_type = id_type
         self.id_number = id_number
         self.motif = motif
@@ -47,6 +50,8 @@ class VisitorModel:
             "nom": self.nom,
             "prenom": self.prenom,
             "phone_number": self.phone_number,
+            "date_of_birth": self.date_of_birth,
+            "place_of_birth": self.place_of_birth,
             "id_type": self.id_type,
             "id_number": self.id_number,
             "motif": self.motif,
@@ -77,6 +82,8 @@ class VisitorDatabase:
                 nom TEXT NOT NULL,
                 prenom TEXT NOT NULL,
                 phone_number TEXT NOT NULL,
+                date_of_birth TEXT NOT NULL,
+                place_of_birth TEXT NOT NULL,
                 id_type TEXT NOT NULL,
                 id_number TEXT NOT NULL,
                 motif TEXT NOT NULL,
@@ -88,7 +95,7 @@ class VisitorDatabase:
         ''')
         self.conn.commit()
 
-    def add_visitor(self, image_path, nom, prenom, phone_number, id_type, id_number, motif, date=None, arrival_time=None):
+    def add_visitor(self, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif, date=None, arrival_time=None):
         """Ajoute un visiteur avec date et heure d'arrivée automatiques si non fournis."""
         if date is None:
             date = datetime.now().date().isoformat()
@@ -98,9 +105,9 @@ class VisitorDatabase:
             with self.conn:
                 cursor = self.conn.cursor()
                 cursor.execute('''
-                    INSERT INTO visiteurs (image_path, nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (image_path, nom, prenom, phone_number, id_type, id_number, motif, date, arrival_time)
+                    INSERT INTO visiteurs (image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif, date, arrival_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif, date, arrival_time)
                 )
                 return cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -156,6 +163,8 @@ class VisitorShare(Base):
     shared_with_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     nom                  = Column(String, nullable=False)
     prenom               = Column(String, nullable=False)
+    date_of_birth        = Column(String, nullable=False)
+    place_of_birth       = Column(String, nullable=False)
     id_type              = Column(String, nullable=False)
     id_number            = Column(String, nullable=False)
     phone_number         = Column(String, nullable=False)
