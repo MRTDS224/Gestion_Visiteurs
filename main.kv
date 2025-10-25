@@ -177,6 +177,8 @@
         FitImage:
             id: image
             source: ""
+            allow_stretch: True
+            keep_ratio: True
             size_hint: None, None
             size: dp(300), dp(300)
 
@@ -410,29 +412,40 @@
             size_hint_x: .4
             size_hint_y: None
             height: dp(40)
-        MDTextField:
-            id: account_password_first
+        MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "10dp"
             size_hint_x: .6
-            size_hint_y: None
-            height: dp(40)
-            password: True
-            required: True
-            on_text: root.enable_butons()
+            MDTextField:
+                id: account_password_first
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+            MDIconButton:
+                icon: "eye"
+                on_release: app.toggle_password_visibility(self, root.ids.account_password_first)
 
         MDLabel:
             text: "Mot de passe à nouveau"
             size_hint_x: .4
             size_hint_y: None
             height: dp(40)
-        MDTextField:
-            id: account_password_second
+        MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "10dp"
             size_hint_x: .6
-            size_hint_y: None
-            height: dp(40)
-            password: True
-            required: True
-            on_text: root.enable_butons()
-        
+            MDTextField:
+                id: account_password_second
+                size_hint_y: None
+                height: dp(40)
+                password: True
+                required: True
+                on_text: root.enable_butons()
+            MDIconButton:
+                icon: "eye"
+                on_release: app.toggle_password_visibility(self, root.ids.account_password_second)
 
     MDBoxLayout:
         orientation: "horizontal"
@@ -500,19 +513,24 @@
                     mode: "on_error"
                 MDTextFieldLeadingIcon:
                     icon: "email"
-
-            MDTextField:
-                id: login_password
-                password: True
-                required: True
-                size_hint_x: .6
-                pos_hint: {"center_x": 0.5}
-                MDTextFieldHintText:
-                    text: "Mot de passe"
-                MDTextFieldHelperText:
-                    mode: "on_error"
-                MDTextFieldLeadingIcon:
-                    icon: "eye-off"
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                pos_hint: {"center_x": 0.55}
+                size_hint_x: .7
+                MDTextField:
+                    id: login_password
+                    password: True
+                    required: True
+                    MDTextFieldHintText:
+                        text: "Mot de passe"
+                    MDTextFieldHelperText:
+                        mode: "on_error"
+                    MDTextFieldLeadingIcon:
+                        icon: "key"
+                MDIconButton:
+                    icon: "eye"
+                    on_release: app.toggle_password_visibility(self, root.ids.login_password)
 
             MDButton:
                 style: "text"
@@ -584,29 +602,42 @@
                     mode: "on_error"
                 MDTextFieldLeadingIcon:
                     icon: "email"
-
-            MDTextField:
-                id: signup_password_first
-                size_hint_x: .6
-                pos_hint: {"center_x": 0.5}
-                password: True
-                required: True
-                MDTextFieldHintText:
-                    text: "Mot de passe"
-                MDTextFieldLeadingIcon:
-                    icon: "eye-off"
-                MDTextFieldHelperText:
-                    text: "Minimum 8 caractères."
-            MDTextField:
-                id: signup_password_second
-                size_hint_x: .6
-                pos_hint: {"center_x": 0.5}
-                password: True
-                required: True
-                MDTextFieldHintText:
-                    text: "Mot de passe à nouveau"
-                MDTextFieldLeadingIcon:
-                    icon: "eye-off"
+            
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                pos_hint: {"center_x": 0.55}
+                size_hint_x: .7
+                MDTextField:
+                    id: signup_password_first
+                    password: True
+                    required: True
+                    MDTextFieldHintText:
+                        text: "Mot de passe"
+                    MDTextFieldHelperText:
+                        text: "Minimum 8 caractères."
+                    MDTextFieldLeadingIcon:
+                        icon: "key"
+                MDIconButton:
+                    icon: "eye"
+                    on_release: app.toggle_password_visibility(self, root.ids.signup_password_first)
+            
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                pos_hint: {"center_x": 0.55}
+                size_hint_x: .7
+                MDTextField:
+                    id: signup_password_second
+                    password: True
+                    required: True
+                    MDTextFieldHintText:
+                        text: "Mot de passe à nouveau"
+                    MDTextFieldLeadingIcon:
+                        icon: "key"
+                MDIconButton:
+                    icon: "eye"
+                    on_release: app.toggle_password_visibility(self, root.ids.signup_password_second)
             
             MDTextField:
                 id: signup_role
@@ -624,13 +655,17 @@
             MDButton:
                 style: "elevated"
                 pos_hint: {"center_x": 0.6}
+                size_hint_y: None
+                height: "30dp"
                 on_release: root.signup()
                 MDButtonText:
                     text: "S’inscrire"
 
             MDButton:
                 style: "text"
-                pos_hint: {"center_x": 0.5}
+                pos_hint: {"center_x": 0.6}
+                size_hint_y: None
+                height: "30dp"
                 on_release: root.manager.current = "login"
                 MDButtonText:
                     text: "Déjà inscrit ? Se connecter"
@@ -743,24 +778,42 @@
             MDLabel:
                 text: "Définissez un nouveau Mot de passe de 8 caractères au minimum"
                 halign: "center"
-            MDTextField:
-                id: new_password_first
-                required: True
-                password: True
-                size_hint_x: .5
-                pos_hint: {"center_x": 0.5}
-                required: True
-                MDTextFieldHintText:
-                    text: "Nouveau mot de passe"
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                pos_hint: {"center_x": 0.55}
+                size_hint_x: .7
+                MDTextField:
+                    id: new_password_first
+                    password: True
+                    required: True
+                    MDTextFieldHintText:
+                        text: "Nouveau mot de passe"
+                    MDTextFieldHelperText:
+                        mode: "on_error"
+                        text: "Minimum 8 caractères."
+                    MDTextFieldLeadingIcon:
+                        icon: "key"
+                MDIconButton:
+                    icon: "eye"
+                    on_release: app.toggle_password_visibility(self, root.ids.new_password_first)
 
-            MDTextField:
-                id: new_password_second
-                required: True
-                password: True
-                size_hint_x: .5
-                pos_hint: {"center_x": 0.5}
-                MDTextFieldHintText:
-                    text: "Entrez le mot de passe encore"
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                pos_hint: {"center_x": 0.55}
+                size_hint_x: .7
+                MDTextField:
+                    id: new_password_second
+                    password: True
+                    required: True
+                    MDTextFieldHintText:
+                        text: "ENtrez le mot de passe encore."
+                    MDTextFieldLeadingIcon:
+                        icon: "key"
+                MDIconButton:
+                    icon: "eye"
+                    on_release: app.toggle_password_visibility(self, root.ids.new_password_second)
 
             MDButton:
                 style: "elevated"

@@ -37,6 +37,8 @@ import webbrowser
 import tempfile
 import urllib.parse
 from plyer import filechooser, notification
+import tkinter as _tk
+from tkinter import filedialog as _fd
 
 from kivy.factory import Factory
 
@@ -201,7 +203,7 @@ class AccountScreen(MDScreen):
         self.ids.account_first_name.text = user.prenom or ""
         self.ids.account_email.text = user.email or ""
         self.ids.account_password_first.text = ""
-        self.ids.account_password_first.text = ""
+        self.ids.account_password_second.text = ""
         self.ids.account_role.text = user.role or ""
         
         self.ids.btn_save.disabled = True
@@ -712,14 +714,19 @@ class Gestion(MDApp):
         self.show_info_snackbar("Connexion réussie!")
     
     def notify_new_items(self, manager, item_type: str):
-        items = manager.get_shares_for_user(self.user.id)
-        if not items:
-            return
-
-        for item in items:
-            shared_by_user = self.user_manager.get_user_by_id(item.shared_by_user_id)
-            self.notify_new_share(shared_by_user, item_type)
-            manager.edit_share_status(item)
+        """Poll les nouveaux items et envoie des notifications."""
+        try:
+            # Utilise la session du manager pour les requêtes
+            with manager.Session() as session:
+                items = manager.get_shares_for_user(self.user.id)
+                for item in items:
+                    # Recharge l'item dans la session active
+                    item = session.merge(item)
+                    shared_by_user = self.user_manager.get_user_by_id(item.shared_by_user_id)
+                    self.notify_new_share(shared_by_user, item_type)
+                    manager.edit_share_status(item)
+        except Exception as e:
+            print(f"Erreur dans notify_new_items: {e}")
       
     def notify_new_share(self, shared_by_user: User, share_type: str):
         try:
@@ -772,7 +779,7 @@ class Gestion(MDApp):
                     self._notified_doc_ids.add(d.id)
         except Exception:
             pass
-
+    
     def open_document(self, document):
         blob, filename = self.document_manager.get_document_blob(document.id)
         # créer un fichier temporaire
@@ -856,21 +863,48 @@ class Gestion(MDApp):
         scroll.add_widget(content)
 
         self.dialog = self.creer_dialogue(title, scroll, actions=[])
-        
+    
+    def _tk_file_dialog(self, filetypes, multiple=False):
+        """Fallback tkinter file dialog returning a list like plyer."""
+        try:
+            root = _tk.Tk()
+            root.withdraw()
+            if multiple:
+                paths = list(_fd.askopenfilenames(parent=root, filetypes=filetypes))
+            else:
+                p = _fd.askopenfilename(parent=root, filetypes=filetypes)
+                paths = [p] if p else []
+            root.destroy()
+            return paths
+        except Exception:
+            return []
+          
     def open_document_filechooser(self):
         self.file_manager_mode = "document"
-        filechooser.open_file(
-            filters=["(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "*"],
-            on_selection=self.select_file
-        )
-
+        try:    
+            filechooser.open_file(
+                filters=["(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "*"],
+                on_selection=self.select_file
+            )
+        except NotImplementedError:
+            types = [("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
+            sel = self._tk_file_dialog(types, multiple=False)
+            if sel:
+                self.select_file(sel)
+                
     def open_image_filechooser(self):
         self.file_manager_mode = "image"
-        filechooser.open_file(
-            filters=["(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)"],
-            on_selection=self.select_file
-        )
-    
+        try:
+            filechooser.open_file(
+                filters=["(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)"],
+                on_selection=self.select_file
+            )
+        except NotImplementedError:
+            types = [("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"))]
+            sel = self._tk_file_dialog(types, multiple=False)
+            if sel:
+                self.select_file(sel)
+                
     def open_menu(self, field_name):
         screen_ids = self.root.get_screen("screen B").ids
         if field_name == "id":
@@ -1169,6 +1203,10 @@ class Gestion(MDApp):
         self.root.current = "screen B"
         self.root.transition = SlideTransition(direction="left")
     
+    def toggle_password_visibility(self, btn, text_field):
+        text_field.password = False if btn.icon == "eye" else True
+        btn.icon = "eye-off" if btn.icon == "eye" else "eye"
+        
     def update_notification_badge(self):
         """Récupère et affiche le nombre de partages reçus."""
         shares = self.visitor_manager.get_active_shares_for_user(self.user.id)
