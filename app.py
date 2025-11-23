@@ -33,12 +33,21 @@ from managers.document_manager import DocumentManager
 from helpers import resource_path
 import sys
 from datetime import datetime, date, timezone, timedelta
-import webbrowser
 import tempfile
-import urllib.parse
 from plyer import filechooser, notification
 import tkinter as _tk
 from tkinter import filedialog as _fd
+import time
+from platform import system
+from urllib.parse import quote
+import webbrowser
+import pywhatkit as pw
+from pywhatkit.core.core import _web
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.options import Options
+from selenium.webdriver.support.ui import WebDriverWait   
+from selenium.webdriver.support import expected_conditions as EC
 
 from kivy.factory import Factory
 
@@ -409,13 +418,6 @@ class Gestion(MDApp):
             ))
             
             box.add_widget(layout)
-        
-        if self.user is not None:
-            self.update_notification_badge()
-            self.update_document_badge() 
-            
-            self.notify_new_items(self.visitor_manager, "visitor")
-            self.notify_new_items(self.document_manager, "document")
                 
     def animer_bouton(self, bouton):
         anim = Animation(opacity=0.5, duration=0.1) + Animation(opacity=1, duration=0.1)
@@ -429,6 +431,14 @@ class Gestion(MDApp):
         screen.ids.btn_cancel.disabled = True
         
     def build(self):
+        # Initialiser la base de données au premier lancement
+        try:
+            from app_init import init_database
+            init_database()
+        except Exception as e:
+            self.show_error_dialog(f"Erreur d'initialisation: {e}")
+            return
+        
         return Builder.load_file(resource_path("main.kv"))
     
     def check_code(self):
@@ -444,7 +454,7 @@ class Gestion(MDApp):
         
         self.root.current = "new_password"
         self.root.get_screen("code_input").ids.reset_code.text = ""
-        
+
     def create_text_field(self, hint, icon=None, required=True):
         field = MDTextField(
             MDTextFieldHintText(text=hint),
@@ -609,30 +619,95 @@ class Gestion(MDApp):
 
             self.visitor_manager.ajouter_visiteur(image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)         
             self.show_info_snackbar("Visiteur ajouté avec succès!")
+            self.root.current = "screen A"
 
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de l'ajout : {e}")
-    
-    def envoyer_par_mail(self, *args):
-        if not self.visiteur:
-            self.show_error_dialog("Aucun visiteur sélectionné.")
+
+    def envoyer_par_whatsapp(self, type, *args):
+        """
+        Envoi via WhatsApp Web avec pywhatkit.
+        - Texte + image obligatoires ensemble.
+        - Lève une erreur si l'image manque.
+        - Demande le numéro destinataire via dialog.
+        """
+        if type == "visiteur":
+            if not self.visiteur:
+                self.show_error_dialog("Aucun visiteur sélectionné.")
+                return
+            file_path = self.visiteur.image_path
+            lignes = []
+            lignes.append(f"Téléphone : {self.visiteur.phone_number}")
+            lignes.append(f"Motif : {self.visiteur.motif}")
+            lignes.append(f"Date : {self.visiteur.date}")
+            texte = "\n".join(lignes)
+            
+        elif type == "document":
+            if not self.selected_document_path:
+                self.show_error_dialog("Aucun document sélectionné.")
+                return
+            file_path = self.selected_document_path
+            texte = "Veuillez trouver le document ci-joint."
+        else:
+            self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
             return
 
-        sujet = "Liste des visiteurs sélectionnés"
-        corps = self.generer_message_visiteurs(self.visiteur)
-        mailto_link = f"mailto:?subject={urllib.parse.quote(sujet)}&body={urllib.parse.quote(corps)}"
-        webbrowser.open(mailto_link)
-        self.dialog.dismiss()
+        # Vérifier que l'image existe — c'est obligatoire
+        if not file_path or not os.path.exists(file_path):
+            self.show_error_dialog("Impossible d'envoyer : l'image de la pièce d'identité est manquante.")
+            return
+        
 
-    def envoyer_par_whatsapp(self, *args):
-        if not self.visiteur:
-            self.show_error_dialog("Aucun visiteur sélectionné.")
+        # Demander le numéro via tkinter dialog
+        try:
+            import tkinter as tk
+            from tkinter import simpledialog
+            root = tk.Tk()
+            root.withdraw()
+            phone = simpledialog.askstring("WhatsApp", "Numéro destinataire (format +CCNNNN..., ex: +212691077106) :")
+            root.destroy()
+        except Exception as e:
+            self.show_error_dialog(f"Erreur lors de la saisie du numéro : {e}")
+            phone = None
+
+        if not phone:
+            self.show_error_dialog("Aucun numéro fourni. Envoi annulé.")
+            
             return
 
-        message = self.generer_message_visiteurs(self.visiteur)
-        whatsapp_link = f"https://wa.me/?text={urllib.parse.quote(message)}"
-        webbrowser.open(whatsapp_link)
-        self.dialog.dismiss()
+        # Envoyer via pywhatkit
+        try:
+            self.show_info_snackbar("Préparation de l'envoi WhatsApp... Veuillez patienter.")
+            if type == "visiteur":
+                
+                pw.sendwhats_image(
+                    receiver=phone,
+                    img_path=file_path,
+                    caption=texte,
+                    wait_time=15,
+                    tab_close=True,
+                    close_time=10
+                )
+            elif type == "document":
+                self.send_document(
+                    phone,
+                    path=file_path,
+                    caption=texte,
+                )
+            else:
+                self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
+                return
+            
+            self.show_info_snackbar("Envoi WhatsApp lancé avec succès. Veuillez vérifier votre navigateur.")
+            
+        except FileNotFoundError as fe:
+            print(f"Erreur fichier WhatsApp: {fe}")
+            self.show_error_dialog(f"Erreur : le fichier image est introuvable.\n{fe}")
+        except Exception as e:
+            print(f"Erreur WhatsApp: {e}")
+            import traceback
+            print(traceback.format_exc())
+            self.show_error_dialog(f"Erreur lors de l'envoi WhatsApp:\n{str(e)[:100]}")
     
     def exit_file_manager(self, *args):
         self.file_manager.close()
@@ -678,40 +753,24 @@ class Gestion(MDApp):
             return screen.ids.year_filter
         else:
             raise ValueError(f"Champ inconnu : {field_name}")
-
-    def generer_message_visiteurs(self, visiteur):
-        lignes = ["Bonjour, je vous partage ce visiteur :\n"]
-        lignes.append(
-            f"Nom : {visiteur.nom}\n"
-            f"Prénom : {visiteur.prenom}\n"
-            f"Téléphone : {visiteur.phone_number}\n"
-            f"Date de naissance : {visiteur.date_of_birth}\n"
-            f"Lieu de naissance : {visiteur.place_of_birth}\n"
-            f"Pièce d'identité : {visiteur.id_type} - {visiteur.id_number}\n"
-            f"Motif : {visiteur.motif}\n"
-            f"Date : {visiteur.date}\n"
-            f"Heure d'arrivée : {visiteur.arrival_time}\n"
-            f"Heure de sortie : {visiteur.exit_time or 'Non renseignée'}\n"
-            f"Observation : {visiteur.observation or 'Aucune'}\n"
-        )
-        return "\n".join(lignes)
-        
+    
     def login(self, email, password):
         if not email or not password:
             self.show_error_dialog("Tous les champs sont obligatoires.")
             return
         
-        self.user, error = self.user_manager.authenticate_user(email, password)
+        try:
+            self.user, error = self.user_manager.authenticate_user(email, password)
+        except Exception as e:
+            self.show_error_dialog(f"Erreur lors de l'authentification : {e}")
+            return
         
         if error:
             self.show_error_dialog(error)
             return
         
-        self.update_notification_badge()
-        self.update_document_badge()
-        
         self.root.current = "screen A"
-        self.show_info_snackbar("Connexion réussie!")
+        self.show_info_snackbar("Connexion réussie!")  
     
     def notify_new_items(self, manager, item_type: str):
         """Poll les nouveaux items et envoie des notifications."""
@@ -961,20 +1020,6 @@ class Gestion(MDApp):
             self.menu.width = dp(100)
             self.menu.open()
             
-    def ouvrir_dialogue_choix_destinataire_document(self):
-        content = MDBoxLayout(orientation="vertical", spacing=10, adaptive_height=True)
-        for user in self.user_manager.list_users():
-            if user.id != self.user.id:
-                btn = self.creer_bouton(
-                    f"Partager avec {user.prenom} {user.nom}",
-                    style="outlined",
-                    icone="account",
-                    on_release=lambda x, uid=user.id: self.share_document(self.user.id, uid, self.selected_document_path)
-                )
-                content.add_widget(btn)
-        actions = [self.creer_bouton("Annuler", style="text", on_release=lambda x: self.dialog.dismiss())]
-        self.dialog = self.creer_dialogue("Choisir le destinataire", content, actions)
-            
     def ouvrir_dialogue_partager(self):
         email_button = self.creer_bouton(
             "Envoyer par mail",
@@ -1087,10 +1132,9 @@ class Gestion(MDApp):
             screen.ids.new_password_second.text = ""
             self.root.get_screen("reset").ids.reset_email.text = ""
             
-            self.root.current = "screen A"
+            self.root.current = "login"
         except ValueError as e:
             self.show_error_dialog(str(e))
-            self.root.current = "reset"
            
     def restart_app(self):
         python = sys.executable
@@ -1100,9 +1144,6 @@ class Gestion(MDApp):
         try:
             self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
-            
-            self.update_notification_badge()
-            self.update_document_badge()
             
             self.root.current = "screen A"
         except ValueError as e:
@@ -1132,7 +1173,7 @@ class Gestion(MDApp):
         
         self.menu.dismiss()
         self.activer_boutons_modification()
-    
+
     def select_file(self, selection):
         if not selection:
             return
@@ -1146,7 +1187,7 @@ class Gestion(MDApp):
 
             self.selected_document_path = path
             self.file_manager_mode = None
-            self.ouvrir_dialogue_choix_destinataire_document()
+            self.envoyer_par_whatsapp("document")
 
         elif self.file_manager_mode == "image":
             if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
@@ -1157,6 +1198,58 @@ class Gestion(MDApp):
             self.root.get_screen("screen B").ids.image.source = path
             self.file_manager_mode = None
             self.activer_boutons_modification()
+    
+    def send_document(self, receiver: str, path: str, caption: str):
+        # Démarrer Chrome (assure-toi que le profil garde ta session WhatsApp)
+        options = Options()
+        # Pour réutiliser ta session WhatsApp, pointe vers ton profil utilisateur Chrome:
+        # options.add_argument(r"--user-data-dir=C:\Users\mrtds\AppData\Local\Google\Chrome\User Data")
+        # options.add_argument("--profile-directory=Default")
+
+        driver = webdriver.Edge(options=options)
+        driver.get(f"https://web.whatsapp.com/send?phone={receiver}")
+
+
+        # Attendre que la page soit prête (QR scanné / session ouverte)
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[contenteditable='true']"))
+        )
+
+        # Ouvre la conversation (soit via URL, soit en cherchant le contact)
+        # Option A: si tu as déjà ouvert le chat ailleurs, saute cette étape.
+        # Option B: naviguer vers une conversation existante par URL:
+        # driver.get(receiver_url_or_selector)
+
+        # Cliquer sur le bouton « trombone »
+        attach_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "span[data-icon='plus-rounded']"))
+        )
+        attach_button.click()
+
+        # Trouver l'input file pour les documents
+        # WhatsApp ouvre un menu; l’élément input file pour documents a souvent:
+        file_input = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
+        )
+        file_input.send_keys(path)  # Chemin complet du fichier
+
+        # Ajouter une légende si besoin
+        time.sleep(1)
+        caption_box = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[aria-label^='Entrez du texte']"))
+        )
+        caption_box.send_keys(caption)
+
+        # Envoyer
+        send_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "span[data-icon='wds-ic-send-filled']"))
+        )
+        time.sleep(1)
+        send_button.click()
+        
+        time.sleep(100)  # Attendre l’envoi
+        # driver.quit()
+        
 
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]
@@ -1184,7 +1277,7 @@ class Gestion(MDApp):
             )),
         )
         error_dialog.open()
-        
+    
     def show_info_snackbar(self, message):
         MDSnackbar(
             MDSnackbarText(

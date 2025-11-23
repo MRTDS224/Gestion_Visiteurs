@@ -1,4 +1,5 @@
-from models.visitor import VisitorModel, db, VisitorShare
+from models.visitor import VisitorModel
+from models.user import VisitorShare
 from managers.user_manager import UserManager
 from datetime import datetime
 import json
@@ -6,32 +7,96 @@ from typing import Optional, Tuple, List
 import os
 from helpers import resource_path
 
+# db n'existe plus en tant qu'objet global, on utilise UserManager pour la session
 class VisitorManager:
     def __init__(self):
         self.session = UserManager().Session()
-        
+    
+    """ 
+    Méthodes pour gérer les visiteurs dans la base de données.
+    """
+    
     def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, date_of_birth: str, place_of_birth: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
-        """Ajoute un visiteur et le sauvegarde. Retourne le VisitorModel et un message d'erreur éventuel."""
-        visitor_id = db.add_visitor(image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)
-        if not visitor_id:
-            return None, "Erreur lors de l'ajout du visiteur"
-        return VisitorModel(visitor_id, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif), None
-
-    def supprimer_visiteur(self, visitor_id: int) -> Tuple[bool, Optional[str]]:
-        """Supprime un visiteur par son identifiant unique dans la base de données."""
-        success = db.delete_visitor(visitor_id)
-        if not success:
-            return False, "Suppression échouée"
-        return True, None
-
+        """Ajoute un visiteur. Retourne le VisitorModel et un message d'erreur éventuel."""
+        session = self.session
+        try:
+            visiteur = VisitorModel(
+                image_path=image_path,
+                nom=nom,
+                prenom=prenom,
+                phone_number=phone_number,
+                date_of_birth=date_of_birth,
+                place_of_birth=place_of_birth,
+                id_type=id_type,
+                id_number=id_number,
+                motif=motif
+            )
+            session.add(visiteur)
+            session.commit()
+            return visiteur, None
+        except Exception as e:
+            session.rollback()
+            return None, str(e)
+        finally:
+            session.close()
+    
     def chercher_visiteur(self, visitor_id: int) -> Optional[VisitorModel]:
         """Recherche un visiteur par identifiant unique dans la base de données."""
-        return db.get_visitor_by_id(visitor_id)
+        session = self.session
+        try:
+            return session.get(VisitorModel, visitor_id)
+        finally:
+            session.close()
 
     def lister_visiteurs(self) -> List[VisitorModel]:
         """Retourne la liste de tous les visiteurs."""
-        return db.get_all_visitors()
+        session = self.session
+        try:
+            return session.query(VisitorModel).order_by(VisitorModel.id).all()
+        finally:
+            session.close()
+    
+    def mettre_a_jour_visiteur(self, visitor_id, **kwargs):
+        """Met à jour les informations d'un visiteur."""
+        session = self.session
+        try:
+            visitor = session.get(VisitorModel, visitor_id)
+            if not visitor:
+                return False, "Visiteur non trouvé."
+            
+            for key, value in kwargs.items():
+                if hasattr(visitor, key):
+                    setattr(visitor, key, value)
+            
+            session.commit()
+            return True, None
+        
+        except Exception as e:
+            session.rollback()
+            return False, str(e)
+        finally:
+            session.close()
+            
+    def supprimer_visiteur(self, visitor_id: int) -> Tuple[bool, Optional[str]]:
+        """Supprime un visiteur par son identifiant unique dans la base de données."""
+        session = self.session
+        try:
+            visiteur = session.get(VisitorModel, visitor_id)
+            if not visiteur:
+                return False, "Visiteur non trouvé."
+            session.delete(visiteur)
+            session.commit()
+            return True, None
+        except Exception as e:
+            session.rollback()
+            return False, str(e)
+        finally:
+            session.close()
 
+    """
+    Méthodes pour l'import/export des visiteurs.
+    """
+    
     def exporter_visiteurs(self, chemin_fichier):
         """Exporte tous les visiteurs dans un fichier JSON."""
         visiteurs = self.lister_visiteurs()
@@ -52,95 +117,11 @@ class VisitorManager:
                 v.get("id_number", ""),
                 v.get("motif", "")
             )
-            
-    def mettre_a_jour_visiteur(self, visitor_id, **kwargs):
-        """Met à jour les informations d'un visiteur."""
-        success = db.update_visitor(visitor_id, **kwargs)
-        if not success:
-            return False, "Aucune modification effectuée"
-        
-        return True, None
     
-    def share_visitor(self, visitor, shared_by_id, shared_with_id, motif=None):
-        """Crée un partage en copiant les données du visitor."""
-        session = self.session
-        try:
-            # Lire l’image sur disque
-            with open(visitor.image_path, "rb") as f:
-                img = f.read()
+    """
+    Méthodes pour gérer le partage des visiteurs.
+    """
 
-            share = VisitorShare(
-                visitor_id=visitor.id,
-                shared_by_user_id=shared_by_id,
-                shared_with_user_id=shared_with_id,
-                nom=visitor.nom,
-                prenom=visitor.prenom,
-                date_of_birth=visitor.date_of_birth,
-                place_of_birth=visitor.place_of_birth,
-                id_type=visitor.id_type,
-                id_number=visitor.id_number,
-                phone_number=visitor.phone_number,
-                motif=motif or visitor.motif,
-                image_data=img,
-            )
-            self.session.add(share)
-            self.session.commit()
-            return share.id
-        except:
-            session.rollback()
-            raise 
-        finally:
-            session.close()
-
-    def get_active_shares_for_user(self, user_id):
-        """Liste les partages reçus par un utilisateur."""
-        session = self.session
-        try:
-            return (
-                session.query(VisitorShare)
-                .filter_by(shared_with_user_id=user_id, status="active")
-                .all()
-            )
-        finally:
-            session.close()
-    
-    def get_shares_for_user(self, user_id):
-        return (
-            self.session.query(VisitorShare)
-            .filter(
-                VisitorShare.shared_with_user_id == user_id,
-                VisitorShare.status != "revoked"
-            )
-            .all()
-        )
-    
-    def edit_share_status(self, share: VisitorShare):
-        """
-        Met à jour le statut d'un partage en notified
-
-        Args:
-            share : Est un objet VisitorShare
-        """
-        session = self.session
-        try:
-            share.status = "notified"
-            session.commit()
-        finally:
-            session.close()
-        
-    def revoke_share(self, share_id):
-        """Révoque un partage existant."""
-        session = self.session
-        try:
-            share = self.session.get(VisitorShare, share_id)
-            if share and share.status == "active":
-                share.status = "revoked"
-                session.commit()
-                return True
-            return False
-        finally:
-            session.close()
-            
     def accept_share(self, share_id):
         """Accepte un partage et ajoute le visiteur à la liste."""
         session = self.session
@@ -172,17 +153,8 @@ class VisitorManager:
             with open(visitor.image_path, "wb") as f:
                 f.write(share.image_data)
             
-            db.add_visitor(
-                visitor.image_path,
-                visitor.nom,
-                visitor.prenom,
-                visitor.phone_number,
-                visitor.date_of_birth,
-                visitor.place_of_birth,
-                visitor.id_type,
-                visitor.id_number,
-                visitor.motif
-            )
+            session.add(visitor)
+            
             share.status = "accepted"
             session.commit()
             return True
@@ -204,5 +176,85 @@ class VisitorManager:
                 .first()
                 is not None
             )
+        finally:
+            session.close()
+    
+    def edit_share_status(self, share: VisitorShare):
+        """
+        Met à jour le statut d'un partage en notified
+
+        Args:
+            share : Est un objet VisitorShare
+        """
+        session = self.session
+        try:
+            share.status = "notified"
+            session.commit()
+        finally:
+            session.close()
+          
+    def get_active_shares_for_user(self, user_id):
+        """Liste les partages reçus par un utilisateur."""
+        session = self.session
+        try:
+            return (
+                session.query(VisitorShare)
+                .filter_by(shared_with_user_id=user_id, status="active")
+                .all()
+            )
+        finally:
+            session.close()
+    
+    def get_shares_for_user(self, user_id):
+        return (
+            self.session.query(VisitorShare)
+            .filter(
+                VisitorShare.shared_with_user_id == user_id,
+                VisitorShare.status != "revoked"
+            )
+            .all()
+        )
+        
+    def revoke_share(self, share_id):
+        """Révoque un partage existant."""
+        session = self.session
+        try:
+            share = self.session.get(VisitorShare, share_id)
+            if share and share.status == "active":
+                share.status = "revoked"
+                session.commit()
+                return True
+            return False
+        finally:
+            session.close()
+            
+    def share_visitor(self, visitor, shared_by_id, shared_with_id, motif=None):
+        """Crée un partage en copiant les données du visitor."""
+        session = self.session
+        try:
+            # Lire l’image sur disque
+            with open(visitor.image_path, "rb") as f:
+                img = f.read()
+
+            share = VisitorShare(
+                visitor_id=visitor.id,
+                shared_by_user_id=shared_by_id,
+                shared_with_user_id=shared_with_id,
+                nom=visitor.nom,
+                prenom=visitor.prenom,
+                date_of_birth=visitor.date_of_birth,
+                place_of_birth=visitor.place_of_birth,
+                id_type=visitor.id_type,
+                id_number=visitor.id_number,
+                phone_number=visitor.phone_number,
+                motif=motif or visitor.motif,
+                image_data=img,
+            )
+            self.session.add(share)
+            self.session.commit()
+            return share.id
+        except:
+            session.rollback()
+            raise 
         finally:
             session.close()

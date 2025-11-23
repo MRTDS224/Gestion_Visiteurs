@@ -5,11 +5,14 @@ from sqlalchemy import (
     Integer,
     String,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    LargeBinary,
+    Text,
+    func
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from passlib.hash import bcrypt
+from passlib.hash import argon2
 import secrets
 
 Base = declarative_base()
@@ -30,12 +33,12 @@ class User(Base):
     shares_sent     = relationship(
         "VisitorShare",
         back_populates="shared_by",
-        foreign_keys="VisitorShare.shared_by_user_id",
+        foreign_keys="[VisitorShare.shared_by_user_id]",
     )
     shares_received = relationship(
         "VisitorShare",
         back_populates="shared_with",
-        foreign_keys="VisitorShare.shared_with_user_id",
+        foreign_keys="[VisitorShare.shared_with_user_id]",
     )
 
     def __repr__(self):
@@ -45,13 +48,13 @@ class User(Base):
         """
         Hash and store the user’s password.
         """
-        self.password_hash = bcrypt.hash(password)
+        self.password_hash = argon2.hash(password)
 
     def verify_password(self, password: str) -> bool:
         """
         Verify a plaintext password against the stored hash.
         """
-        return bcrypt.verify(password, self.password_hash)
+        return argon2.verify(password, self.password_hash)
 
 # Durée de validité du token (ici 1 heure)
 RESET_TOKEN_EXPIRY = timedelta(hours=1)
@@ -72,3 +75,26 @@ class PasswordResetToken(Base):
         
     def is_expired(self):
         return datetime.now(timezone.utc) > self.expires_at
+
+class VisitorShare(Base):
+    __tablename__ = "visitor_shares"
+    id                   = Column(Integer, primary_key=True)
+    visitor_id           = Column(Integer, nullable=False, index=True)
+    shared_by_user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shared_with_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    nom                  = Column(String, nullable=False)
+    prenom               = Column(String, nullable=False)
+    date_of_birth        = Column(String, nullable=False)
+    place_of_birth       = Column(String, nullable=False)
+    id_type              = Column(String, nullable=False)
+    id_number            = Column(String, nullable=False)
+    phone_number         = Column(String, nullable=False)
+    motif                = Column(Text)
+    image_data           = Column(LargeBinary, nullable=False)
+    shared_at            = Column(DateTime(timezone=True), server_default=func.now())
+    status               = Column(String, default="active", nullable=False)
+
+    shared_by  = relationship("User", back_populates="shares_sent",
+                              foreign_keys=[shared_by_user_id])
+    shared_with = relationship("User", back_populates="shares_received",
+                               foreign_keys=[shared_with_user_id])

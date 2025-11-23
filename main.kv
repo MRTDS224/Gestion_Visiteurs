@@ -62,18 +62,18 @@
                 pos_hint: {"center_y": 0.5}
                 on_release: app.renitialiser_filtre()
 
-            MDIconButton:
-                icon: "bell"
-                style: "tonal"
-                pos_hint: {"center_y": 0.5}
-                on_release: root.open_notifications()
-                MDBadge:
-                    id: ntf_badge
-                    text: ""
-                    badge_color: "red"
-                    badge_pos: ("right", "top")
-                    badge_animation: True
-                    badge_animation_type: "fade_in"
+            # MDIconButton:
+            #     icon: "bell"
+            #     style: "tonal"
+            #     pos_hint: {"center_y": 0.5}
+            #     on_release: root.open_notifications()
+            #     MDBadge:
+            #         id: ntf_badge
+            #         text: ""
+            #         badge_color: "red"
+            #         badge_pos: ("right", "top")
+            #         badge_animation: True
+            #         badge_animation_type: "fade_in"
             MDIconButton:
                 icon: "file-send"
                 style: "tonal"
@@ -83,22 +83,22 @@
                 icon_color: "#1E88E5"
                 pos_hint: {"center_y": 0.5}
                 on_release: app.open_document_filechooser()
-            MDIconButton:
-                icon: "file-eye"
-                style: "tonal"
-                theme_bg_color: "Custom"
-                md_bg_color: "#E0F2F1"
-                theme_icon_color: "Custom"
-                icon_color: "#004D40"
-                pos_hint: {"center_y": 0.5}
-                on_release: app.open_document_dialog()
-                MDBadge:
-                    id: doc_badge
-                    text: ""
-                    badge_color: "red"
-                    badge_pos: ("right", "top")
-                    badge_animation: True
-                    badge_animation_type: "fade_in"
+            # MDIconButton:
+            #     icon: "file-eye"
+            #     style: "tonal"
+            #     theme_bg_color: "Custom"
+            #     md_bg_color: "#E0F2F1"
+            #     theme_icon_color: "Custom"
+            #     icon_color: "#004D40"
+            #     pos_hint: {"center_y": 0.5}
+            #     on_release: app.open_document_dialog()
+            #     MDBadge:
+            #         id: doc_badge
+            #         text: ""
+            #         badge_color: "red"
+            #         badge_pos: ("right", "top")
+            #         badge_animation: True
+            #         badge_animation_type: "fade_in"
             MDIconButton:
                 icon: "account"
                 style: "tonal"
@@ -167,7 +167,7 @@
                 md_bg_color: "#BBDEFB"
                 theme_icon_color: "Custom"
                 icon_color: "#1E88E5"
-                on_release: app.ouvrir_dialogue_partager()
+                on_release: app.envoyer_par_whatsapp("visiteur")
     MDBoxLayout:
         orientation: 'vertical'
         padding: "20dp"
@@ -808,7 +808,7 @@
                     password: True
                     required: True
                     MDTextFieldHintText:
-                        text: "ENtrez le mot de passe encore."
+                        text: "Entrez le mot de passe encore."
                     MDTextFieldLeadingIcon:
                         icon: "key"
                 MDIconButton:
