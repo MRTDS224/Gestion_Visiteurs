@@ -48,6 +48,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait   
 from selenium.webdriver.support import expected_conditions as EC
+from sqlalchemy.orm import make_transient
 
 from kivy.factory import Factory
 
@@ -760,7 +761,7 @@ class Gestion(MDApp):
             return
         
         try:
-            self.user, error = self.user_manager.authenticate_user(email, password)
+            user, error = self.user_manager.authenticate_user(email, password)
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de l'authentification : {e}")
             return
@@ -769,6 +770,10 @@ class Gestion(MDApp):
             self.show_error_dialog(error)
             return
         
+        # ✅ Détache l'utilisateur de la session pour éviter les problèmes plus tard
+        make_transient(user)
+        
+        self.user = user
         self.root.current = "screen A"
         self.show_info_snackbar("Connexion réussie!")  
     
@@ -1142,9 +1147,12 @@ class Gestion(MDApp):
             
     def signup(self, last_name, first_name, email, password_first, role):
         try:
-            self.user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
+            user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
             
+            make_transient(user)
+            
+            self.user = user
             self.root.current = "screen A"
         except ValueError as e:
             self.show_error_dialog(str(e))
@@ -1250,7 +1258,6 @@ class Gestion(MDApp):
         time.sleep(100)  # Attendre l’envoi
         # driver.quit()
         
-
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]
         self.document_manager.share_document(from_user_id, to_user_id, document_path, document_type)
@@ -1292,7 +1299,7 @@ class Gestion(MDApp):
     def show_visitor_details(self, visiteur=None):
         self.visiteur = visiteur
         self.remplir_champs()
-            
+        
         self.root.current = "screen B"
         self.root.transition = SlideTransition(direction="left")
     

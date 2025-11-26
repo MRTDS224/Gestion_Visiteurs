@@ -1,10 +1,24 @@
+-- Déconnecter tous les clients
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+FROM pg_stat_activity
+WHERE pg_stat_activity.datname = 'gestion_visiteurs'
+AND pid <> pg_backend_pid();
+
+-- Supprimer dans l'ordre inverse de dépendance (foreign keys d'abord)
+DROP TABLE IF EXISTS public.password_reset_tokens CASCADE;
+DROP TABLE IF EXISTS public.document_shares CASCADE;
+DROP TABLE IF EXISTS public.visitor_shares CASCADE;
+DROP TABLE IF EXISTS public.visiteurs CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+
 -- Créer la base de données
 CREATE DATABASE gestion_visiteurs;
 
 -- Connecter à la base
 \c gestion_visiteurs
 
--- Créer les tables users
+-- Créer la table users
 CREATE TABLE IF NOT EXISTS public.users (
     id SERIAL PRIMARY KEY,
     nom VARCHAR(50),
@@ -13,24 +27,24 @@ CREATE TABLE IF NOT EXISTS public.users (
     password_hash VARCHAR(128) NOT NULL,
     structure VARCHAR(100) NOT NULL,
     role VARCHAR(20) DEFAULT 'utilisateur' NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Créer la table visiteurs
 CREATE TABLE IF NOT EXISTS public.visiteurs (
     id SERIAL PRIMARY KEY,
-    image_path TEXT,
-    nom VARCHAR(50) NOT NULL,
-    prenom VARCHAR(50) NOT NULL,
-    phone_number VARCHAR(20),
-    date_of_birth VARCHAR(10),
-    place_of_birth VARCHAR(100),
-    id_type VARCHAR(50),
-    id_number VARCHAR(50),
-    motif VARCHAR(200),
-    date DATE NOT NULL,
-    arrival_time TIME,
-    exit_time TIME,
+    image_path TEXT NOT NULL,
+    nom VARCHAR NOT NULL,
+    prenom VARCHAR NOT NULL,
+    phone_number VARCHAR NOT NULL,
+    date_of_birth VARCHAR NOT NULL,
+    place_of_birth VARCHAR NOT NULL,
+    id_type VARCHAR NOT NULL,
+    id_number VARCHAR NOT NULL,
+    motif VARCHAR NOT NULL,
+    date VARCHAR NOT NULL,
+    arrival_time VARCHAR NOT NULL,
+    exit_time VARCHAR,
     observation TEXT
 );
 
@@ -40,8 +54,17 @@ CREATE TABLE IF NOT EXISTS public.visitor_shares (
     visitor_id INTEGER NOT NULL REFERENCES visiteurs(id) ON DELETE CASCADE,
     shared_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     shared_with_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    shared_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50) DEFAULT 'active',
+    nom VARCHAR NOT NULL,
+    prenom VARCHAR NOT NULL,
+    date_of_birth VARCHAR NOT NULL,
+    place_of_birth VARCHAR NOT NULL,
+    id_type VARCHAR NOT NULL,
+    id_number VARCHAR NOT NULL,
+    phone_number VARCHAR NOT NULL,
+    motif TEXT,
+    image_data BYTEA NOT NULL,
+    shared_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status VARCHAR DEFAULT 'active' NOT NULL,
     CONSTRAINT no_self_share CHECK (shared_by_user_id != shared_with_user_id)
 );
 
@@ -49,13 +72,13 @@ CREATE TABLE IF NOT EXISTS public.visitor_shares (
 CREATE TABLE IF NOT EXISTS public.document_shares (
     id SERIAL PRIMARY KEY,
     shared_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    shared_with_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    shared_to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     file BYTEA,
-    filename VARCHAR(255) NOT NULL,
+    file_name VARCHAR,
     document_type VARCHAR(50),
-    shared_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50) DEFAULT 'active',
-    CONSTRAINT no_self_share_doc CHECK (shared_by_user_id != shared_with_user_id)
+    shared_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status VARCHAR DEFAULT 'active' NOT NULL,
+    CONSTRAINT no_self_share_doc CHECK (shared_by_user_id != shared_to_user_id)
 );
 
 -- Créer la table password_reset_tokens
@@ -63,15 +86,15 @@ CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(64) UNIQUE NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+    expires_at TIMESTAMPTZ NOT NULL
 );
 
--- Créer les indexes
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_visitor_shares_visitor_id ON visitor_shares(visitor_id);
 CREATE INDEX IF NOT EXISTS idx_visitor_shares_user_id ON visitor_shares(shared_with_user_id);
-CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON document_shares(shared_with_user_id);
+CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON document_shares(shared_to_user_id);
 
--- Remettre à jour les séquences
+-- Séquences
 SELECT setval(pg_get_serial_sequence('users','id'), COALESCE(MAX(id), 0), false) FROM users;
 SELECT setval(pg_get_serial_sequence('visiteurs','id'), COALESCE(MAX(id), 0), false) FROM visiteurs;
 SELECT setval(pg_get_serial_sequence('visitor_shares','id'), COALESCE(MAX(id), 0), false) FROM visitor_shares;
