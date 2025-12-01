@@ -1,4 +1,4 @@
-from models.visitor import VisitorModel
+from models.visitor import Visitor
 from models.user import VisitorShare
 from managers.user_manager import UserManager
 from datetime import datetime
@@ -16,19 +16,14 @@ class VisitorManager:
     Méthodes pour gérer les visiteurs dans la base de données.
     """
     
-    def ajouter_visiteur(self, image_path: str, nom: str, prenom: str, phone_number: str, date_of_birth: str, place_of_birth: str, id_type: str, id_number: str, motif: str) -> Tuple[Optional[VisitorModel], Optional[str]]:
-        """Ajoute un visiteur. Retourne le VisitorModel et un message d'erreur éventuel."""
+    def ajouter_visiteur(self, image_path: str, phone_number: str, place_of_birth: str, motif: str) -> Tuple[Optional[Visitor], Optional[str]]:
+        """Ajoute un visiteur. Retourne le Visitor et un message d'erreur éventuel."""
         session = self.session
         try:
-            visiteur = VisitorModel(
+            visiteur = Visitor(
                 image_path=image_path,
-                nom=nom,
-                prenom=prenom,
                 phone_number=phone_number,
-                date_of_birth=date_of_birth,
                 place_of_birth=place_of_birth,
-                id_type=id_type,
-                id_number=id_number,
                 motif=motif
             )
             session.add(visiteur)
@@ -40,19 +35,19 @@ class VisitorManager:
         finally:
             session.close()
     
-    def chercher_visiteur(self, visitor_id: int) -> Optional[VisitorModel]:
+    def chercher_visiteur(self, visitor_id: int) -> Optional[Visitor]:
         """Recherche un visiteur par identifiant unique dans la base de données."""
         session = self.session
         try:
-            return session.get(VisitorModel, visitor_id)
+            return session.get(Visitor, visitor_id)
         finally:
             session.close()
 
-    def lister_visiteurs(self) -> List[VisitorModel]:
+    def lister_visiteurs(self) -> List[Visitor]:
         """Retourne la liste de tous les visiteurs."""
         session = self.session
         try:
-            return session.query(VisitorModel).order_by(VisitorModel.id).all()
+            return session.query(Visitor).order_by(Visitor.id).all()
         finally:
             session.close()
     
@@ -60,7 +55,7 @@ class VisitorManager:
         """Met à jour les informations d'un visiteur."""
         session = self.session
         try:
-            visitor = session.get(VisitorModel, visitor_id)
+            visitor = session.get(Visitor, visitor_id)
             if not visitor:
                 return False, "Visiteur non trouvé."
             
@@ -81,7 +76,7 @@ class VisitorManager:
         """Supprime un visiteur par son identifiant unique dans la base de données."""
         session = self.session
         try:
-            visiteur = session.get(VisitorModel, visitor_id)
+            visiteur = session.get(Visitor, visitor_id)
             if not visiteur:
                 return False, "Visiteur non trouvé."
             session.delete(visiteur)
@@ -110,11 +105,7 @@ class VisitorManager:
         for v in visiteurs:
             self.ajouter_visiteur(
                 v.get("image_path", ""),
-                v.get("nom", ""),
-                v.get("prenom", ""),
                 v.get("phone_number", ""),
-                v.get("id_type", ""),
-                v.get("id_number", ""),
                 v.get("motif", "")
             )
     
@@ -137,16 +128,11 @@ class VisitorManager:
             os.makedirs(image_dir, exist_ok=True)
             image_path = os.path.join(image_dir, f"imported_image_{share_id}_{timestamp}.jpg")
             
-            visitor = VisitorModel(
+            visitor = Visitor(
                 id=None,
                 image_path=image_path,
-                nom=share.nom,
-                prenom=share.prenom,
                 phone_number=share.phone_number,
-                date_of_birth=share.date_of_birth,
                 place_of_birth=share.place_of_birth,
-                id_type=share.id_type,
-                id_number=share.id_number,
                 motif=share.motif,
             )
             # Sauvegarder l'image sur disque
@@ -240,12 +226,7 @@ class VisitorManager:
                 visitor_id=visitor.id,
                 shared_by_user_id=shared_by_id,
                 shared_with_user_id=shared_with_id,
-                nom=visitor.nom,
-                prenom=visitor.prenom,
-                date_of_birth=visitor.date_of_birth,
                 place_of_birth=visitor.place_of_birth,
-                id_type=visitor.id_type,
-                id_number=visitor.id_number,
                 phone_number=visitor.phone_number,
                 motif=motif or visitor.motif,
                 image_data=img,

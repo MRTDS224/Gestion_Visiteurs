@@ -1,17 +1,3 @@
--- Déconnecter tous les clients
-SELECT pg_terminate_backend(pg_stat_activity.pid)
-FROM pg_stat_activity
-WHERE pg_stat_activity.datname = 'gestion_visiteurs'
-AND pid <> pg_backend_pid();
-
--- Supprimer dans l'ordre inverse de dépendance (foreign keys d'abord)
-DROP TABLE IF EXISTS public.password_reset_tokens CASCADE;
-DROP TABLE IF EXISTS public.document_shares CASCADE;
-DROP TABLE IF EXISTS public.visitor_shares CASCADE;
-DROP TABLE IF EXISTS public.visiteurs CASCADE;
-DROP TABLE IF EXISTS public.users CASCADE;
-
-
 -- Créer la base de données
 CREATE DATABASE gestion_visiteurs;
 
@@ -30,17 +16,12 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Créer la table visiteurs
-CREATE TABLE IF NOT EXISTS public.visiteurs (
+-- Créer la table visitors
+CREATE TABLE IF NOT EXISTS public.visitors (
     id SERIAL PRIMARY KEY,
     image_path TEXT NOT NULL,
-    nom VARCHAR NOT NULL,
-    prenom VARCHAR NOT NULL,
     phone_number VARCHAR NOT NULL,
-    date_of_birth VARCHAR NOT NULL,
     place_of_birth VARCHAR NOT NULL,
-    id_type VARCHAR NOT NULL,
-    id_number VARCHAR NOT NULL,
     motif VARCHAR NOT NULL,
     date VARCHAR NOT NULL,
     arrival_time VARCHAR NOT NULL,
@@ -51,15 +32,10 @@ CREATE TABLE IF NOT EXISTS public.visiteurs (
 -- Créer la table visitor_shares
 CREATE TABLE IF NOT EXISTS public.visitor_shares (
     id SERIAL PRIMARY KEY,
-    visitor_id INTEGER NOT NULL REFERENCES visiteurs(id) ON DELETE CASCADE,
+    visitor_id INTEGER NOT NULL REFERENCES visitors(id) ON DELETE CASCADE,
     shared_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     shared_with_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    nom VARCHAR NOT NULL,
-    prenom VARCHAR NOT NULL,
-    date_of_birth VARCHAR NOT NULL,
     place_of_birth VARCHAR NOT NULL,
-    id_type VARCHAR NOT NULL,
-    id_number VARCHAR NOT NULL,
     phone_number VARCHAR NOT NULL,
     motif TEXT,
     image_data BYTEA NOT NULL,
@@ -96,7 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_document_shares_user_id ON document_shares(shared
 
 -- Séquences
 SELECT setval(pg_get_serial_sequence('users','id'), COALESCE(MAX(id), 0), false) FROM users;
-SELECT setval(pg_get_serial_sequence('visiteurs','id'), COALESCE(MAX(id), 0), false) FROM visiteurs;
+SELECT setval(pg_get_serial_sequence('visitors','id'), COALESCE(MAX(id), 0), false) FROM visitors;
 SELECT setval(pg_get_serial_sequence('visitor_shares','id'), COALESCE(MAX(id), 0), false) FROM visitor_shares;
 SELECT setval(pg_get_serial_sequence('document_shares','id'), COALESCE(MAX(id), 0), false) FROM document_shares;
 SELECT setval(pg_get_serial_sequence('password_reset_tokens','id'), COALESCE(MAX(id), 0), false) FROM password_reset_tokens;

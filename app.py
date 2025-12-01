@@ -5,11 +5,14 @@ from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import StringProperty, ObjectProperty, BooleanProperty
+from kivy.properties import ObjectProperty, BooleanProperty
 
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.dialog import MDDialog, MDDialogHeadlineText, MDDialogButtonContainer, MDDialogContentContainer
+from kivymd.uix.dialog import (
+    MDDialog, MDDialogHeadlineText,
+    MDDialogButtonContainer, MDDialogContentContainer
+)
 from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLeadingIcon
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -18,13 +21,16 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
 from kivymd.uix.fitimage import FitImage
-from kivymd.uix.label import MDIcon
 from kivymd.uix.card import MDCard
 from kivy.uix.widget import Widget
 from kivy.utils import platform
 from kivy.core.window import Window
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.list import MDList, MDListItem, MDListItemLeadingIcon, MDListItemHeadlineText, MDListItemSupportingText, MDListItemTertiaryText, MDListItemTrailingIcon
+from kivymd.uix.list import (
+    MDList, MDListItem, MDListItemLeadingIcon,
+    MDListItemHeadlineText, MDListItemSupportingText,
+    MDListItemTertiaryText
+)
 from kivy.uix.screenmanager import SlideTransition
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
@@ -32,7 +38,7 @@ from models.user import User
 from managers.document_manager import DocumentManager
 from helpers import resource_path
 import sys
-from datetime import datetime, date, timezone, timedelta
+from datetime import datetime, timezone
 import tempfile
 from plyer import filechooser, notification
 import tkinter as _tk
@@ -176,13 +182,8 @@ class MainScreen(MDScreen):
 class DetailScreen(MDScreen):
     def on_leave(self, *args):
         self.ids.image.source = ""
-        self.ids.nom.text = ""
-        self.ids.prenom.text = ""
         self.ids.phone_number.text = ""
-        self.ids.date_of_birth.text = ""
         self.ids.place_of_birth.text = ""
-        self.ids.id_type.text = ""
-        self.ids.id_number.text = ""
         self.ids.motif.text = ""
         self.ids.date.text = ""
         self.ids.arrival_time.text = ""
@@ -411,7 +412,7 @@ class Gestion(MDApp):
                 height=dp(200)
             ))
             layout.add_widget(MDLabel(
-                text=f"{visiteur.nom} {visiteur.prenom}",
+                text=f"Visiteur {visiteur.id} - N° {visiteur.phone_number}",
                 halign="left",
                 font_size='12sp',
                 size_hint_y=None,
@@ -559,13 +560,8 @@ class Gestion(MDApp):
             else:
                 image_path = ""
 
-            nom = screen.ids.nom.text
-            prenom = screen.ids.prenom.text
             phone_number = screen.ids.phone_number.text
-            date_of_birth = screen.ids.date_of_birth.text
             place_of_birth = screen.ids.place_of_birth.text
-            id_type = screen.ids.id_type.text
-            id_number = screen.ids.id_number.text
             motif = screen.ids.motif.text
             date = screen.ids.date.text
             arrival_time = screen.ids.arrival_time.text
@@ -574,23 +570,22 @@ class Gestion(MDApp):
 
             if self.visiteur is None:
                 self.enregistrer_visiteur(
-                    image_path=image_path, nom=nom, prenom=prenom,
-                    phone_number=phone_number, date_of_birth=date_of_birth,
-                    place_of_birth=place_of_birth, id_type=id_type,
-                    id_number=id_number, motif=motif
+                    image_path=image_path,
+                    phone_number=phone_number,
+                    place_of_birth=place_of_birth,
+                    motif=motif
                 )
                 screen.ids.btn_save.disabled = True
                 screen.ids.btn_cancel.disabled = True
                 return
                 
-            if not all([nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif, date, arrival_time, exit_time, observation]):
+            if not all([phone_number, place_of_birth, motif, date, arrival_time, exit_time, observation]):
                 return self.show_error_dialog("Tous les champs doivent être remplis pour enregistrer les modifications.")
 
             success, error = self.visitor_manager.mettre_a_jour_visiteur(
-                self.visiteur.id, image_path=image_path, nom=nom, prenom=prenom,
-                phone_number=phone_number, date_of_birth=date_of_birth,
-                place_of_birth=place_of_birth, id_type=id_type,
-                id_number=id_number, motif=motif,
+                self.visiteur.id, image_path=image_path,
+                phone_number=phone_number,
+                place_of_birth=place_of_birth, motif=motif,
                 date=date, arrival_time=arrival_time,
                 exit_time=exit_time, observation=observation
             )
@@ -611,14 +606,14 @@ class Gestion(MDApp):
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de la modification : {e}")
             
-    def enregistrer_visiteur(self, image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif):
+    def enregistrer_visiteur(self, image_path, phone_number, place_of_birth, motif):
         try:
-            erreur = self.valider_champs(nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)
+            erreur = self.valider_champs(phone_number, place_of_birth, motif)
             if erreur:
                 self.show_error_dialog(erreur)
                 return
 
-            self.visitor_manager.ajouter_visiteur(image_path, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif)         
+            self.visitor_manager.ajouter_visiteur(image_path, phone_number, place_of_birth, motif)         
             self.show_info_snackbar("Visiteur ajouté avec succès!")
             self.root.current = "screen A"
 
@@ -843,7 +838,7 @@ class Gestion(MDApp):
                     self._notified_doc_ids.add(d.id)
         except Exception:
             pass
-    
+
     def open_document(self, document):
         blob, filename = self.document_manager.get_document_blob(document.id)
         # créer un fichier temporaire
@@ -1067,13 +1062,8 @@ class Gestion(MDApp):
         screen = self.root.get_screen("screen B")
         if self.visiteur is None:
             screen.ids.image.source = ""
-            screen.ids.nom.text = ""
-            screen.ids.prenom.text = ""
             screen.ids.phone_number.text = ""
-            screen.ids.date_of_birth.text = ""
             screen.ids.place_of_birth.text = ""
-            screen.ids.id_type.text = ""
-            screen.ids.id_number.text = ""
             screen.ids.motif.text = ""
             screen.ids.date.text = ""
             screen.ids.arrival_time.text = ""
@@ -1088,13 +1078,8 @@ class Gestion(MDApp):
         
         # Remplit les champs avec les données du visiteur sélectionné
         screen.ids.image.source = self.visiteur.image_path
-        screen.ids.nom.text = self.visiteur.nom
-        screen.ids.prenom.text = self.visiteur.prenom
         screen.ids.phone_number.text = self.visiteur.phone_number
-        screen.ids.date_of_birth.text = self.visiteur.date_of_birth or ""
         screen.ids.place_of_birth.text = self.visiteur.place_of_birth or ""
-        screen.ids.id_type.text = self.visiteur.id_type
-        screen.ids.id_number.text = self.visiteur.id_number
         screen.ids.motif.text = self.visiteur.motif
         screen.ids.date.text = self.visiteur.date
         screen.ids.arrival_time.text = self.visiteur.arrival_time
@@ -1317,8 +1302,8 @@ class Gestion(MDApp):
         documents = self.document_manager.get_shares_for_user(self.user.id)
         self.root.get_screen("screen A").ids.doc_badge.text = str(len(documents)) if documents else ""
         
-    def valider_champs(self, nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif):
-        if not all([nom, prenom, phone_number, date_of_birth, place_of_birth, id_type, id_number, motif]):
+    def valider_champs(self, phone_number, place_of_birth, motif):
+        if not all([phone_number, place_of_birth, motif]):
             return "Tous les champs sont obligatoires."
         if not phone_number.isdigit() or len(phone_number) < 10:
             return "Numéro de téléphone invalide."

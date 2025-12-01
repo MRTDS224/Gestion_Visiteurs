@@ -200,81 +200,22 @@
         MDLabel:
             size_hint: .4, None
             height : dp(40)
-            text: "Nom"
-        MDTextField:
-            id: nom
-            on_text: app.activer_boutons_modification()
-            size_hint: .6, None
-            height : dp(40)
-            
-        MDLabel:
-            size_hint: .4, None
-            text: "Prénom"
-            height : dp(40)
-        MDTextField:
-            id: prenom
-            on_text: app.activer_boutons_modification()
-            size_hint: .6, None
-            height : dp(40)
-        
-        MDLabel:
-            size_hint: .4, None
-            height : dp(40)
             text: "Numéro de Téléphone"    
         MDTextField:
             id: phone_number
             on_text: app.activer_boutons_modification()
             size_hint: .6, None
             height : dp(40)
-        
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint: .5, None
-            height : dp(40)
-            MDLabel:
-                size_hint: .2, None
-                height : dp(40)
-                text: "Date de naissance"    
-            MDTextField:
-                id: date_of_birth
-                on_text: app.activer_boutons_modification()
-                size_hint: .3, None
-                height : dp(40)
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint: .5, None
-            height : dp(40)
-            
-            MDLabel:
-                size_hint: .2, None
-                height : dp(40)
-                text: "Lieu de naissance"    
-            MDTextField:
-                id: place_of_birth
-                on_text: app.activer_boutons_modification()
-                size_hint: .3, None
-                height : dp(40)            
-        
+
         MDLabel:
-            size_hint: .4, None
+            size_hint: .2, None
             height : dp(40)
-            text: "Type de la carte"
+            text: "Lieu de naissance"    
         MDTextField:
-            id: id_type
+            id: place_of_birth
             on_text: app.activer_boutons_modification()
-            size_hint: .6, None
-            height: dp(40)
-            on_focus: if self.focus: app.open_menu("id")
-            
-        MDLabel:
-            size_hint: .4, None
-            height : dp(40)
-            text: "Numéro de la carte"
-        MDTextField:
-            id: id_number
-            on_text: app.activer_boutons_modification()
-            size_hint: .6, None
-            height : dp(40)
+            size_hint: .3, None
+            height : dp(40)            
             
         MDLabel:
             size_hint: .4, None
@@ -326,7 +267,6 @@
             on_text: app.activer_boutons_modification()
             size_hint: .6, None
             height : dp(40)
-
 #
 <AccountScreen>:
     MDTopAppBar:
@@ -344,6 +284,24 @@
         MDTopAppBarTitle:
             text: "Bienvenue dans la gestion de votre compte"
             halign: "center"
+        MDTopAppBarTrailingButtonContainer:
+
+            MDActionTopAppBarButton:
+                id: btn_save
+                icon: "content-save"
+                disabled: True
+                md_bg_color: "#a7d9adff"
+                theme_icon_color: "Custom"
+                icon_color: "#10b480ff"
+                on_release: root.update_user()    
+            MDActionTopAppBarButton:
+                id: btn_cancel
+                icon: "cancel"
+                disabled: True
+                md_bg_color: "#FFCDD2"
+                theme_icon_color: "Custom"
+                icon_color: "#C62828"
+                on_release: root.annuler_modification_utilisateur()
 
     MDGridLayout:
         id: box
@@ -446,31 +404,6 @@
             MDIconButton:
                 icon: "eye"
                 on_release: app.toggle_password_visibility(self, root.ids.account_password_second)
-
-    MDBoxLayout:
-        orientation: "horizontal"
-        padding: "20dp"
-        spacing: "20dp"
-        pos_hint: {"y": 0.2}
-        
-        MDButton:
-            id: btn_cancel
-            style: "text"
-            disabled: True
-            on_release: root.annuler_modification_utilisateur()
-            MDButtonText:
-                text: "Annuler"
-            MDButtonIcon:
-                icon: "cancel-save"
-        MDButton:
-            id: btn_save
-            style: "elevated"
-            disabled: True
-            on_release: root.update_user()
-            MDButtonText:
-                text: "Sauvegarder"
-            MDButtonIcon:
-                icon: "content-save"
     
     
     MDButton:
