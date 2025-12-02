@@ -1198,6 +1198,7 @@ class Gestion(MDApp):
         
         if self.file_manager_mode == "document":
             self.file_manager_mode = None
+            self.selected_document_path = selection[0]
             self.envoyer_par_whatsapp('document')
         
         elif self.file_manager_mode == "image":
@@ -1228,9 +1229,15 @@ class Gestion(MDApp):
     def send_document(self, receiver: str, path: str, caption: str):
         # Démarrer Chrome (assure-toi que le profil garde ta session WhatsApp)
         options = Options()
-        # Pour réutiliser ta session WhatsApp, pointe vers ton profil utilisateur Chrome:
-        # options.add_argument(r"--user-data-dir=C:\Users\mrtds\AppData\Local\Google\Chrome\User Data")
-        # options.add_argument("--profile-directory=Default")
+        options.add_experimental_option("detach", True)
+
+        # Créer un dossier pour sauvegarder le profil utilisateur
+        user_data_dir = os.path.join(os.getcwd(), "whatsapp_profile")
+        if not os.path.exists(user_data_dir):
+            os.makedirs(user_data_dir)
+
+        # Utiliser un profil utilisateur persistant
+        options.add_argument(f"user-data-dir={user_data_dir}")
 
         driver = webdriver.Edge(options=options)
         driver.get(f"https://web.whatsapp.com/send?phone={receiver}")
@@ -1266,15 +1273,13 @@ class Gestion(MDApp):
         )
         caption_box.send_keys(caption)
 
+        time.sleep(1)
         # Envoyer
         send_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "span[data-icon='wds-ic-send-filled']"))
         )
         time.sleep(1)
         send_button.click()
-        
-        time.sleep(100)  # Attendre l’envoi
-        # driver.quit()
         
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]

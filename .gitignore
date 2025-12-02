@@ -1,6 +1,7 @@
 gestion_visiteurs_env/
 __pycache__/
 database/
+whatsapp_profile/
 dist/
 build/
 *.pyc
