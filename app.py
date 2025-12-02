@@ -42,6 +42,8 @@ from managers.document_manager import DocumentManager
 from helpers import resource_path
 import sys
 from datetime import datetime, timezone
+from PIL import Image
+from pathlib import Path
 import tempfile
 from plyer import filechooser, notification
 import tkinter as _tk
@@ -614,6 +616,8 @@ class Gestion(MDApp):
             self.visiteur = self.visitor_manager.chercher_visiteur(self.visiteur.id)
             self.remplir_champs()
             self.afficher_heros_visiteurs()
+            
+            self.selected_image_path = ""
 
         except Exception as e:
             self.show_error_dialog(f"Erreur lors de la modification : {e}")
@@ -680,7 +684,6 @@ class Gestion(MDApp):
 
         if not phone:
             self.show_error_dialog("Aucun numéro fourni. Envoi annulé.")
-            
             return
 
         # Envoyer via pywhatkit
@@ -707,6 +710,8 @@ class Gestion(MDApp):
                 return
             
             self.show_info_snackbar("Envoi WhatsApp lancé avec succès. Veuillez vérifier votre navigateur.")
+            
+            self.selected_document_path = ""
             
         except FileNotFoundError as fe:
             print(f"Erreur fichier WhatsApp: {fe}")
@@ -955,11 +960,12 @@ class Gestion(MDApp):
         try:    
             filechooser.open_file(
                 filters=["(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "*"],
-                on_selection=self.select_file
+                on_selection=self.select_file,
+                multiple=True
             )
         except NotImplementedError:
             types = [("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
-            sel = self._tk_file_dialog(types, multiple=False)
+            sel = self._tk_file_dialog(types, multiple=True)
             if sel:
                 self.select_file(sel)
                 
@@ -968,11 +974,12 @@ class Gestion(MDApp):
         try:
             filechooser.open_file(
                 filters=["(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)"],
-                on_selection=self.select_file
+                on_selection=self.select_file,
+                multiple=True
             )
         except NotImplementedError:
             types = [("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"))]
-            sel = self._tk_file_dialog(types, multiple=False)
+            sel = self._tk_file_dialog(types, multiple=True)
             if sel:
                 self.select_file(sel)
 
@@ -1182,27 +1189,41 @@ class Gestion(MDApp):
     def select_file(self, selection):
         if not selection:
             return
-
-        path = selection[0]
-
+        
+        for path in selection:
+            if not path.lower().endswith(('.pdf', '.txt', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                self.show_error_dialog(f"Fichier invalide: {path}")
+                continue
+        
+        
         if self.file_manager_mode == "document":
-            if not path.lower().endswith(('.pdf', '.txt', '.doc', '.docx')):
-                self.show_error_dialog("Veuillez sélectionner un fichier PDF, TXT ou DOC valide.")
-                return
-
-            self.selected_document_path = path
             self.file_manager_mode = None
-            self.envoyer_par_whatsapp("document")
-
+            self.envoyer_par_whatsapp('document')
+        
         elif self.file_manager_mode == "image":
-            if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                self.show_error_dialog("Veuillez sélectionner un fichier image valide.")
-                return
-
-            self.selected_image_path = path
-            self.root.get_screen("screen B").ids.image.source = path
             self.file_manager_mode = None
             self.activer_boutons_modification()
+            
+            path1 = Path(selection[0])
+            img1 = Image.open(path1)
+        
+            if len(selection) > 1:
+                path2 = Path(selection[1])
+                img2 = Image.open(path2)
+
+                # Fusion verticale (empilement)
+                new_img = Image.new("RGB", (max(img1.width, img2.width), img1.height + img2.height))
+                new_img.paste(img1, (0, 0))
+                new_img.paste(img2, (0, img1.height))
+                
+                image_dir = resource_path(os.path.join("pictures", "ID"))
+                os.makedirs(image_dir, exist_ok=True)
+                self.selected_image_path = os.path.join(image_dir, f"fusion_de_{path1.stem}_et_{path2.stem}.jpg")
+                new_img.save(self.selected_image_path)
+            else:
+                self.selected_image_path = str(path1)
+            
+            self.root.get_screen("screen B").ids.image.source = self.selected_image_path
     
     def send_document(self, receiver: str, path: str, caption: str):
         # Démarrer Chrome (assure-toi que le profil garde ta session WhatsApp)
