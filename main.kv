@@ -1,6 +1,17 @@
 #:kivy 2.3.1
 #:import SlideTransition kivy.uix.screenmanager.SlideTransition
 #:import dp kivy.metrics.dp
+<TooltipMDIconButton>
+    MDTooltipPlain:
+        text: root.texte
+
+    MDIconButton:
+        icon: root.icon
+
+<ToolMDActionButton>
+    MDTooltipPlain:
+        text: root.texte
+
 <MainScreen>:
     MDBoxLayout:
         orientation: 'vertical'
@@ -42,8 +53,9 @@
                 MDTextFieldHintText:
                     text: "Jours"
 
-            MDIconButton:
+            TooltipMDIconButton:
                 icon: "filter"
+                texte: "Filtrer"
                 style: "tonal"
                 theme_bg_color: "Custom"
                 md_bg_color: "blue"
@@ -52,8 +64,9 @@
                 pos_hint: {"center_y": 0.5}
                 on_release: app.filtrer(year_filter.text, month_filter.text, day_filter.text)
 
-            MDIconButton:
+            TooltipMDIconButton:
                 icon: "reload"
+                texte: "Annuler le filtre"
                 style: "tonal"
                 theme_bg_color: "Custom"
                 md_bg_color: "green"
@@ -74,8 +87,9 @@
             #         badge_pos: ("right", "top")
             #         badge_animation: True
             #         badge_animation_type: "fade_in"
-            MDIconButton:
+            TooltipMDIconButton:
                 icon: "file-send"
+                texte: "Partager un document ou une image"
                 style: "tonal"
                 theme_bg_color: "Custom"
                 md_bg_color: "#BBDEFB"
@@ -99,8 +113,9 @@
             #         badge_pos: ("right", "top")
             #         badge_animation: True
             #         badge_animation_type: "fade_in"
-            MDIconButton:
+            TooltipMDIconButton:
                 icon: "account"
+                texte: "Votre espace compte"
                 style: "tonal"
                 theme_bg_color: "Custom"
                 md_bg_color: "white"
@@ -127,7 +142,8 @@
 
         MDTopAppBarLeadingButtonContainer:
 
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
+                texte: "Retour à l'écran principal"
                 icon: "arrow-left"
                 on_release:
                     root.manager.current = "screen A"
@@ -138,7 +154,8 @@
 
         MDTopAppBarTrailingButtonContainer:
 
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
+                texte: "Sauvergarder les modifications"
                 id: btn_save
                 icon: "content-save"
                 disabled: True
@@ -146,7 +163,8 @@
                 theme_icon_color: "Custom"
                 icon_color: "#10b480ff"
                 on_release: app.enregistrer_modifications()
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
+                texte: "Annuler les modifications"
                 id: btn_cancel
                 icon: "cancel"
                 disabled: True
@@ -154,14 +172,16 @@
                 theme_icon_color: "Custom"
                 icon_color: "#C62828"
                 on_release: app.annuler_modifications()
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
+                texte: "Supprimer le visiteur"
                 id: btn_delete
                 icon: "trash-can-outline"
                 md_bg_color: "#FFCDD2"
                 theme_icon_color: "Custom"
                 icon_color: "#C62828"
                 on_release: app.delete_visitor()
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
+                texte: "Partager l'image du visiteur par WhatsApp"
                 id: btn_share
                 icon: "share"
                 md_bg_color: "#BBDEFB"
@@ -276,8 +296,9 @@
 
         MDTopAppBarLeadingButtonContainer:
 
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
                 icon: "arrow-left"
+                texte: "Retour à l'écran principal"
                 on_release:
                     root.manager.current = "screen A"
 
@@ -286,17 +307,19 @@
             halign: "center"
         MDTopAppBarTrailingButtonContainer:
 
-            MDActionTopAppBarButton:
+            ToolMDActionButton:
                 id: btn_save
                 icon: "content-save"
+                texte: "Sauvegarder les modifications"
                 disabled: True
                 md_bg_color: "#a7d9adff"
                 theme_icon_color: "Custom"
                 icon_color: "#10b480ff"
-                on_release: root.update_user()    
-            MDActionTopAppBarButton:
+                on_release: root.update_user()
+            ToolMDActionButton:
                 id: btn_cancel
                 icon: "cancel"
+                texte: "Annuler les modifications"
                 disabled: True
                 md_bg_color: "#FFCDD2"
                 theme_icon_color: "Custom"

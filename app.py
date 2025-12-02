@@ -5,7 +5,7 @@ from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty, BooleanProperty
+from kivy.properties import ObjectProperty, BooleanProperty, StringProperty
 
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
@@ -18,6 +18,8 @@ from kivymd.uix.textfield import MDTextField, MDTextFieldHintText, MDTextFieldLe
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.menu import MDDropdownMenu
+
+from kivymd.uix.appbar import MDActionTopAppBarButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
 from kivymd.uix.fitimage import FitImage
@@ -32,6 +34,7 @@ from kivymd.uix.list import (
     MDListItemTertiaryText
 )
 from kivy.uix.screenmanager import SlideTransition
+from kivymd.uix.tooltip import MDTooltip
 from managers.visitor_manager import VisitorManager
 from managers.user_manager import UserManager
 from models.user import User
@@ -338,7 +341,16 @@ class NewPasswordScreen(MDScreen):
     def on_leave(self, *args):
         self.ids.new_password_first.text = ""
         self.ids.new_password_second.text = ""
-   
+
+class TooltipMDIconButton(MDTooltip, MDIconButton):
+    '''Implements a button with tooltip behavior.'''
+
+    texte = StringProperty()
+    icon = StringProperty()
+
+class ToolMDActionButton(MDTooltip, MDActionTopAppBarButton):
+    texte = StringProperty()
+        
 class Gestion(MDApp):
     visiteur = ObjectProperty(None, allownone=True)
     def __init__(self, **kwargs):
@@ -963,7 +975,7 @@ class Gestion(MDApp):
             sel = self._tk_file_dialog(types, multiple=False)
             if sel:
                 self.select_file(sel)
-                
+
     def open_menu(self, field_name):
         screen_ids = self.root.get_screen("screen B").ids
         if field_name == "id":
