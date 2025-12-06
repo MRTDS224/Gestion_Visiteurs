@@ -36,11 +36,9 @@ from kivymd.uix.list import (
 )
 from kivy.uix.screenmanager import SlideTransition
 from kivymd.uix.tooltip import MDTooltip
-from managers.visitor_manager import VisitorManager
-from managers.user_manager import UserManager
-from models.user import User
-from managers.document_manager import DocumentManager
-from helpers import resource_path
+from managers import DocumentManager, UserManager, VisitorManager
+from models import User
+from helpers import resource_path, setup_logger
 import sys
 from datetime import datetime, timezone
 from PIL import Image
@@ -64,25 +62,9 @@ from sqlalchemy.orm import make_transient
 
 from kivy.factory import Factory
 
-# S'assurer qu'une classe nommée MDDivider existe pour le Builder/KV
-try:
-    # tentative : import direct (si présent)
-    from kivymd.uix.divider import MDDivider as _MDDivider
-    Factory.register('MDDivider', cls=_MDDivider)
-except Exception:
-    try:
-        # compatibilité : certaines versions utilisent MDSeparator
-        from kivymd.uix.divider import MDSeparator as _MDDivider
-        Factory.register('MDDivider', cls=_MDDivider)
-    except Exception:
-        # fallback minimal (ne casse pas le Builder, simple widget vide)
-        from kivy.uix.widget import Widget
-        class MDDividerFallback(Widget):
-            pass
-        Factory.register('MDDivider', cls=MDDividerFallback)
-
 __version__ = "1.0.0"
 
+logger = setup_logger()
 
 class MainScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -100,14 +82,15 @@ class MainScreen(MDScreen):
                 app.show_error_dialog("Le partage est déjà révoqué ou n'existe pas.")
                 return
         except Exception as e:
-            app.show_error_dialog(f"Erreur lors de l'acceptation du partage : {e}")
+            app.show_error_dialog("Erreur lors de l'acceptation du partage")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             return
         
         if self.menu:
             self.menu.dismiss()
             
         self.dialog.dismiss()
-        app.show_info_snackbar("Partage accepté. visiteur ajouté à votre liste.")
+        app.show_info_snackbar("Partage accepté. Le visiteur ajouté à votre liste.", str(share_id))
         app.afficher_heros_visiteurs()
         
     def open_share_menu(self, share_id):
@@ -177,13 +160,14 @@ class MainScreen(MDScreen):
                 app.show_error_dialog("Le partage est déjà révoqué ou n'existe pas.")
                 return
         except Exception as e:
-            app.show_error_dialog(f"Erreur lors du refus du partage : {e}")
+            app.show_error_dialog("Erreur lors du refus du partage")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             return
         
         self.menu.dismiss()
         self.dialog.dismiss()
         
-        app.show_info_snackbar("Partage refusé.")
+        app.show_info_snackbar("Partage refusé.", str(share_id))
         
 class DetailScreen(MDScreen):
     def on_leave(self, *args):
@@ -264,11 +248,13 @@ class AccountScreen(MDScreen):
         try:
             app.user_manager.update_user(user.id, **params)
             app.user = app.user_manager.get_user_by_email(email)
-            app.show_info_snackbar("Profil mis à jour avec succès.")
+            app.show_info_snackbar("Profil mis à jour avec succès.", str(user.id))
+            
             # On recharge l’affichage et on désactive à nouveau
             self.populate_fields()
         except ValueError as e:
-            app.show_error_dialog(str(e))
+            app.show_error_dialog("Une erreur s'est produite")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
     
     def annuler_modification_utilisateur(self):
         self.populate_fields()
@@ -524,13 +510,15 @@ class Gestion(MDApp):
             return
         
         def confirmer_suppression():
-            succes, error = self.visitor_manager.supprimer_visiteur(self.visiteur.id)
+            vis_id = self.visiteur.id
+            succes, error = self.visitor_manager.supprimer_visiteur(vis_id)
             if error:
                 self.show_error_dialog(error)
                 return
             
             self.dialog.dismiss()
-            self.show_info_snackbar("Visiteur supprimé avec succès.")
+            self.show_info_snackbar("Visiteur supprimé avec succès.", str(vis_id))
+            
             self.root.current = "screen A"
             self.afficher_heros_visiteurs()
         
@@ -600,7 +588,7 @@ class Gestion(MDApp):
 
             screen.ids.btn_save.disabled = True
             screen.ids.btn_cancel.disabled = True
-            self.show_info_snackbar("Modifications enregistrées avec succès!")
+            self.show_info_snackbar("Modifications enregistrées avec succès!", str(self.visiteur.id))
 
             # Rafraîchir l'affichage
             self.visiteur = self.visitor_manager.chercher_visiteur(self.visiteur.id)
@@ -610,7 +598,8 @@ class Gestion(MDApp):
             self.selected_image_path = ""
 
         except Exception as e:
-            self.show_error_dialog(f"Erreur lors de la modification : {e}")
+            self.show_error_dialog("Erreur lors de la modification.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             
     def enregistrer_visiteur(self, image_path, phone_number, place_of_birth, motif):
         try:
@@ -623,7 +612,8 @@ class Gestion(MDApp):
             self.root.current = "screen A"
 
         except Exception as e:
-            self.show_error_dialog(f"Erreur lors de l'ajout : {e}")
+            self.show_error_dialog("Erreur lors de l'ajout.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
 
     def envoyer_par_whatsapp(self, type, *args):
         """
@@ -669,7 +659,8 @@ class Gestion(MDApp):
             phone = simpledialog.askstring("WhatsApp", "Numéro destinataire (format +CCNNNN..., ex: +212691077106) :")
             root.destroy()
         except Exception as e:
-            self.show_error_dialog(f"Erreur lors de la saisie du numéro : {e}")
+            self.show_error_dialog("Erreur lors de la saisie du numéro.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             phone = None
 
         if not phone:
@@ -704,13 +695,12 @@ class Gestion(MDApp):
             self.selected_document_path = ""
 
         except FileNotFoundError as fe:
-            print(f"Erreur fichier WhatsApp: {fe}")
-            self.show_error_dialog(f"Erreur : le fichier image est introuvable.\n{fe}")
+            self.show_error_dialog("Erreur : le fichier image est introuvable.")
+            logger.error(f"L'erreur suivante vient de se produire {fe}")
         except Exception as e:
-            print(f"Erreur WhatsApp: {e}")
-            import traceback
-            print(traceback.format_exc())
-            self.show_error_dialog(f"Erreur lors de l'envoi WhatsApp:\n{str(e)[:100]}")
+            self.show_error_dialog("Erreur lors de l'envoi WhatsApp.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
+            
     
     def exit_file_manager(self, *args):
         self.file_manager.close()
@@ -721,8 +711,8 @@ class Gestion(MDApp):
         for v in visiteurs:
             try:
                 d = datetime.strptime(v.date, "%Y-%m-%d")
-            except Exception:
-                continue
+            except Exception as e:
+                logger.error(f"L'erreur suivante vient de se produire {e}")
             if year and str(d.year) != year:
                 continue
             if month and str(d.month).zfill(2) != month.zfill(2):
@@ -765,19 +755,20 @@ class Gestion(MDApp):
         try:
             user, error = self.user_manager.authenticate_user(email, password)
         except Exception as e:
-            self.show_error_dialog(f"Erreur lors de l'authentification : {e}")
+            self.show_error_dialog("Erreur lors de l'authentification.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             return
         
         if error:
             self.show_error_dialog(error)
             return
         
-        # ✅ Détache l'utilisateur de la session pour éviter les problèmes plus tard
+        # Détache l'utilisateur de la session pour éviter les problèmes plus tard
         make_transient(user)
         
         self.user = user
         self.root.current = "screen A"
-        self.show_info_snackbar("Connexion réussie!")  
+        self.show_info_snackbar("Connexion réussie!", str(self.user.id))  
     
     def notify_new_items(self, manager, item_type: str):
         """Poll les nouveaux items et envoie des notifications."""
@@ -792,7 +783,7 @@ class Gestion(MDApp):
                     self.notify_new_share(shared_by_user, item_type)
                     manager.edit_share_status(item)
         except Exception as e:
-            print(f"Erreur dans notify_new_items: {e}")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
       
     def notify_new_share(self, shared_by_user: User, share_type: str):
         try:
@@ -804,13 +795,16 @@ class Gestion(MDApp):
                 timeout=5
             )
         except Exception as e:
-            print(f"Erreur lors de l'envoi de la notification : {e}")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
              
     def on_start(self):
+        logger.info("Lancement de l'application")
+        
         work_dir = os.path.join(os.path.expanduser("~"), "Documents", "GestionVisiteur")
         os.makedirs(work_dir, exist_ok=True)
         os.chdir(work_dir)
-        print("Répertoire de travail défini sur :", os.getcwd())
+        
+        logger.info(f"Répertoire de travail défini sur : {os.getcwd()}")
         
         self.afficher_heros_visiteurs()
         Clock.schedule_interval(self._poll_for_new_items, self._notify_poll_interval)
@@ -938,8 +932,8 @@ class Gestion(MDApp):
                 paths = [p] if p else []
             root.destroy()
             return paths
-        except Exception:
-            return []
+        except Exception as e:
+            logger.error(f"L'erreur suivante vient de se produire {e}")
           
     def open_document_filechooser(self):
         self.file_manager_mode = "document"
@@ -949,7 +943,9 @@ class Gestion(MDApp):
                 on_selection=self.select_file,
                 multiple=True
             )
-        except NotImplementedError:
+        except NotImplementedError as e:
+            logger.error(f"L'erreur suivante vient de se produire {e}")
+            logger.info("Lancement du filechooser avec TKINTER")
             types = [("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
             if sel:= self._tk_file_dialog(types, multiple=True):
                 self.select_file(sel)
@@ -962,7 +958,9 @@ class Gestion(MDApp):
                 on_selection=self.select_file,
                 multiple=True
             )
-        except NotImplementedError:
+        except NotImplementedError as e:
+            logger.error(f"L'erreur suivante vient de se produire {e}")
+            logger.info("Lancement du filechooser avec TKINTER")
             types = [("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"))]
             if sel:= self._tk_file_dialog(types, multiple=True):
                 self.select_file(sel)
@@ -1123,7 +1121,8 @@ class Gestion(MDApp):
         try:
             self.reset_fields_modify_pw(new_password_first, screen)
         except ValueError as e:
-            self.show_error_dialog(str(e))
+            self.show_error_dialog("Une erreur s'est produite lors changement du mot de passe, veillez réessayer.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
 
     def reset_fields_modify_pw(self, new_password_first, screen):
         self.user_manager.reset_password_with_token(self.token, new_password_first)
@@ -1142,12 +1141,14 @@ class Gestion(MDApp):
     def signup(self, last_name, first_name, email, password_first, role):
         try:
             self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
-            self.show_info_snackbar("Connexion réussie.")
             
             self.user = self.user_manager.authenticate_user(email, password_first)
             self.root.current = "screen A"
+            
+            self.show_info_snackbar("Compte crée avec succès.", str(self.user))
         except ValueError as e:
-            self.show_error_dialog(str(e))
+            self.show_error_dialog("Une erreur s'est produite lors de la création du compte, veuillez réessayer.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             
     def send_reset_code(self):
         email = self.root.get_screen("reset").ids.reset_email.text
@@ -1156,7 +1157,8 @@ class Gestion(MDApp):
             self.token = self.user_manager.generate_reset_token(email)
             self.root.current = "code_input"
         except ValueError as e:
-            self.show_error_dialog(str(e))
+            self.show_error_dialog("Une erreur s'est produite lors de l'envoie du code, veuillez réessayer.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
             self.root.get_screen("reset").ids.reset_email.text = ""
         
     def set_item(self, item, field_name):
@@ -1262,7 +1264,6 @@ class Gestion(MDApp):
         time.sleep(1)
         send_button.click()
         
-    # TODO Rename this here and in `send_document`
     def find_input_file(self, driver, arg1, arg2):
         # Trouver l'input file pour les documents
         # WhatsApp ouvre un menu; l’élément input file pour documents a souvent:
@@ -1276,18 +1277,21 @@ class Gestion(MDApp):
         
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]
-        self.document_manager.share_document(from_user_id, to_user_id, document_path, document_type)
-        self.show_info_snackbar("Document partagé avec succès!")
+        doc = self.document_manager.share_document(from_user_id, to_user_id, document_path, document_type)
+        self.show_info_snackbar("Document partagé avec succès!", str(doc.id))
+        
         self.dialog.dismiss()
     
     def share_visitor(self, visiteur, from_user_id, to_user_id):
         def _share(instance):
             try:
-                self.visitor_manager.share_visitor(visiteur, from_user_id, to_user_id)
-                self.show_info_snackbar("Visiteur partagé avec succès!")
+                share_id = self.visitor_manager.share_visitor(visiteur, from_user_id, to_user_id)
+                self.show_info_snackbar("Visiteur partagé avec succès!", str(share_id))
+                
                 self.dialog.dismiss()
             except ValueError as e:
-                self.show_error_dialog(str(e))
+                self.show_error_dialog("Une erreur s'est produite lors du partage du visiteur, veuillez réessayer.")
+                logger.error(f"L'erreur suivante vient de se produire {e}")
         return _share
     
     def show_error_dialog(self, message):
@@ -1301,7 +1305,9 @@ class Gestion(MDApp):
         )
         error_dialog.open()
     
-    def show_info_snackbar(self, message):
+    def show_info_snackbar(self, message, id=""):
+        logger.info(message + id)
+        
         MDSnackbar(
             MDSnackbarText(
             text=message),
@@ -1339,5 +1345,8 @@ class Gestion(MDApp):
         if not phone_number.isdigit() or len(phone_number) < 10:
             return "Numéro de téléphone invalide."
         return None
-          
-Gestion().run()
+    
+try:      
+    Gestion().run()
+except Exception as e:
+    logger.error(f"Une erreur s'est produite {e}")

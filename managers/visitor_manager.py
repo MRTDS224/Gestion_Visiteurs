@@ -1,10 +1,12 @@
-from models.visitor import Visitor
-from models.user import VisitorShare
+from models import Visitor, VisitorShare
 from managers.user_manager import UserManager
+from helpers import setup_logger
 from datetime import datetime
 import json
 from typing import Optional, Tuple, List
 import os
+
+logger = setup_logger()
 
 # db n'existe plus en tant qu'objet global, on utilise UserManager pour la session
 class VisitorManager:
@@ -29,8 +31,12 @@ class VisitorManager:
             session.commit()
             return visiteur, None
         except Exception as e:
-            session.rollback()
-            return None, str(e)
+            return self.add_error_logger(
+                "L'erreur suivante s'est produite lors de l'ajout du visiteur. ",
+                e,
+                session,
+                None,
+            )
         finally:
             session.close()
     
@@ -57,17 +63,21 @@ class VisitorManager:
             visitor = session.get(Visitor, visitor_id)
             if not visitor:
                 return False, "Visiteur non trouvé."
-            
+
             for key, value in kwargs.items():
                 if hasattr(visitor, key):
                     setattr(visitor, key, value)
-            
+
             session.commit()
             return True, None
-        
+
         except Exception as e:
-            session.rollback()
-            return False, str(e)
+            return self.add_error_logger(
+                "L'erreur suivante s'est produite lors de la mise à jour du visiteur. ",
+                e,
+                session,
+                False,
+            )
         finally:
             session.close()
             
@@ -82,10 +92,19 @@ class VisitorManager:
             session.commit()
             return True, None
         except Exception as e:
-            session.rollback()
-            return False, str(e)
+            return self.add_error_logger(
+                "L'erreur suivante s'est produite lors de la suppression du visiteur. ",
+                e,
+                session,
+                False,
+            )
         finally:
             session.close()
+
+    def add_error_logger(self, arg0, e, session, arg3):
+        logger.error(f"{arg0}{e}")
+        session.rollback()
+        return arg3, str(e)
 
     """
     Méthodes pour l'import/export des visiteurs.
