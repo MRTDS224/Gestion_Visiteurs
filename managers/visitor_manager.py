@@ -5,7 +5,6 @@ from datetime import datetime
 import json
 from typing import Optional, Tuple, List
 import os
-from helpers import resource_path
 
 # db n'existe plus en tant qu'objet global, on utilise UserManager pour la session
 class VisitorManager:
@@ -117,38 +116,39 @@ class VisitorManager:
         """Accepte un partage et ajoute le visiteur à la liste."""
         session = self.session
         try:
-            share = self.session.get(VisitorShare, share_id)
-            if not share or share.status != "active":
-                return False
-            
-            # Générer un nom de fichier unique
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-            image_dir = resource_path(os.path.join("pictures", "ID"))
-            os.makedirs(image_dir, exist_ok=True)
-            image_path = os.path.join(image_dir, f"imported_image_{share_id}_{timestamp}.jpg")
-            
-            visitor = Visitor(
-                id=None,
-                image_path=image_path,
-                phone_number=share.phone_number,
-                place_of_birth=share.place_of_birth,
-                motif=share.motif,
-            )
-            # Sauvegarder l'image sur disque
-            with open(visitor.image_path, "wb") as f:
-                f.write(share.image_data)
-            
-            session.add(visitor)
-            
-            share.status = "accepted"
-            session.commit()
-            return True
+            return self.save_visitor(share_id, session)
         except:
             session.rollback()
             raise
         finally:
             session.close()
+
+    def save_visitor(self, share_id, session):
+        share = self.session.get(VisitorShare, share_id)
+        if not share or share.status != "active":
+            return False
+
+        # Générer un nom de fichier unique
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        image_dir = os.path.join(os.path.expanduser("~"), "Documents", "GestionVisiteur", "ID")
+        os.makedirs(image_dir, exist_ok=True)
+        image_path = os.path.join(image_dir, f"imported_image_{share_id}_{timestamp}.jpg")
+
+        visitor = Visitor(
+            id=None,
+            image_path=image_path,
+            phone_number=share.phone_number,
+            place_of_birth=share.place_of_birth,
+            motif=share.motif,
+        )
+        # Sauvegarder l'image sur disque
+        with open(visitor.image_path, "wb") as f:
+            f.write(share.image_data)
+
+        session.add(visitor)
+
+        return self.change_share_statut("accepted", share, session)
 
     def check_access(self, visitor_id, user_id):
         """Vérifie si un partage actif existe pour cet utilisateur."""
@@ -207,12 +207,15 @@ class VisitorManager:
         try:
             share = self.session.get(VisitorShare, share_id)
             if share and share.status == "active":
-                share.status = "revoked"
-                session.commit()
-                return True
+                return self.change_share_statut("revoked", share, session)
             return False
         finally:
             session.close()
+
+    def change_share_statut(self, arg0, share, session):
+        share.status = arg0
+        session.commit()
+        return True
             
     def share_visitor(self, visitor, shared_by_id, shared_with_id, motif=None):
         """Crée un partage en copiant les données du visitor."""

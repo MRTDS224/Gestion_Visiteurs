@@ -28,9 +28,7 @@ class DocumentManager:
         :return: tuple (fichier_blob, nom_fichier)
         """
         document = self.session.query(DocumentShare).filter_by(id=document_id).first()
-        if document:
-            return document.file, document.file_name
-        return None, None
+        return (document.file, document.file_name) if document else (None, None)
 
     def get_shares_for_user(self, user_id):
         return (

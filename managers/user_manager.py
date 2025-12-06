@@ -100,13 +100,14 @@ class UserManager:
         """
         Vérifie qu'un utilisateur existe et que le mot de passe est valide.
         """
-        user = self.get_user_by_email(email)
-        if not user:
-            return None, f"L'email {email} est invalide, aucun compte avec cet email."
-        if user.verify_password(password):
-            return user, None
+        if user := self.get_user_by_email(email):
+            return (
+                (user, None)
+                if user.verify_password(password)
+                else (None, "Le mot de passe est incorrecte.")
+            )
         else:
-            return None, "Le mot de passe est incorrecte."
+            return None, f"L'email {email} est invalide, aucun compte avec cet email."
 
     def list_users(self) -> list[User]:
         """

@@ -1,3 +1,4 @@
+import contextlib
 import os
 os.environ['KIVY_GL_BACKEND'] = 'sdl2'
 
@@ -57,7 +58,7 @@ from pywhatkit.core.core import _web
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
-from selenium.webdriver.support.ui import WebDriverWait   
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from sqlalchemy.orm import make_transient
 
@@ -361,7 +362,7 @@ class Gestion(MDApp):
         self.user_manager = UserManager()
         self.document_manager = DocumentManager()
         self.icon = resource_path("pictures/logo1.jpg")
-        self.title = "G-Entry"
+        self.title = "GestionVisiteurs"
         self.dialog = None
         self.user = None
         self.file_manager_mode = None
@@ -446,15 +447,7 @@ class Gestion(MDApp):
         screen.ids.btn_save.disabled = True
         screen.ids.btn_cancel.disabled = True
         
-    def build(self):
-        # Initialiser la base de données au premier lancement
-        try:
-            from app_init import init_database
-            init_database()
-        except Exception as e:
-            self.show_error_dialog(f"Erreur d'initialisation: {e}")
-            return
-        
+    def build(self):        
         return Builder.load_file(resource_path("main.kv"))
     
     def check_code(self):
@@ -543,7 +536,7 @@ class Gestion(MDApp):
         
         # Ouvrir un dialgue de confirmation
         content = MDLabel(
-            text=f"Etes vous sûr de vouloir supprimer ce visiteur. Cette action est irréversible.",
+            text="Etes vous sûr de vouloir supprimer ce visiteur. Cette action est irréversible.",
             halign="center",
             size_hint_y=None,
             height=dp(30),
@@ -566,7 +559,7 @@ class Gestion(MDApp):
     def enregistrer_modifications(self):
         try:
             screen = self.root.get_screen("screen B")
-            
+
             if self.selected_image_path:
                 image_path = self.selected_image_path
             elif self.visiteur and self.visiteur.image_path:
@@ -589,10 +582,7 @@ class Gestion(MDApp):
                     place_of_birth=place_of_birth,
                     motif=motif
                 )
-                screen.ids.btn_save.disabled = True
-                screen.ids.btn_cancel.disabled = True
-                return
-                
+                return self.masquer_bouttons(screen)
             if not all([phone_number, place_of_birth, motif, date, arrival_time, exit_time, observation]):
                 return self.show_error_dialog("Tous les champs doivent être remplis pour enregistrer les modifications.")
 
@@ -603,20 +593,20 @@ class Gestion(MDApp):
                 date=date, arrival_time=arrival_time,
                 exit_time=exit_time, observation=observation
             )
-            
+
             if not success:
                 self.show_error_dialog(error or "Erreur lors de la mise à jour du visiteur.")
                 return
-            
+
             screen.ids.btn_save.disabled = True
             screen.ids.btn_cancel.disabled = True
             self.show_info_snackbar("Modifications enregistrées avec succès!")
-            
+
             # Rafraîchir l'affichage
             self.visiteur = self.visitor_manager.chercher_visiteur(self.visiteur.id)
             self.remplir_champs()
             self.afficher_heros_visiteurs()
-            
+
             self.selected_image_path = ""
 
         except Exception as e:
@@ -624,12 +614,11 @@ class Gestion(MDApp):
             
     def enregistrer_visiteur(self, image_path, phone_number, place_of_birth, motif):
         try:
-            erreur = self.valider_champs(phone_number, place_of_birth, motif)
-            if erreur:
+            if erreur := self.valider_champs(phone_number, place_of_birth, motif):
                 self.show_error_dialog(erreur)
                 return
 
-            self.visitor_manager.ajouter_visiteur(image_path, phone_number, place_of_birth, motif)         
+            self.visitor_manager.ajouter_visiteur(image_path, phone_number, place_of_birth, motif)
             self.show_info_snackbar("Visiteur ajouté avec succès!")
             self.root.current = "screen A"
 
@@ -643,23 +632,24 @@ class Gestion(MDApp):
         - Lève une erreur si l'image manque.
         - Demande le numéro destinataire via dialog.
         """
-        if type == "visiteur":
-            if not self.visiteur:
-                self.show_error_dialog("Aucun visiteur sélectionné.")
-                return
-            file_path = self.visiteur.image_path
-            lignes = []
-            lignes.append(f"Téléphone : {self.visiteur.phone_number}")
-            lignes.append(f"Motif : {self.visiteur.motif}")
-            lignes.append(f"Date : {self.visiteur.date}")
-            texte = "\n".join(lignes)
-            
-        elif type == "document":
+        if type == "document":
             if not self.selected_document_path:
                 self.show_error_dialog("Aucun document sélectionné.")
                 return
             file_path = self.selected_document_path
             texte = "Veuillez trouver le document ci-joint."
+        elif type == "visiteur":
+            if not self.visiteur:
+                self.show_error_dialog("Aucun visiteur sélectionné.")
+                return
+            file_path = self.visiteur.image_path
+            lignes = [
+                f"Téléphone : {self.visiteur.phone_number}",
+                f"Motif : {self.visiteur.motif}",
+                f"Date : {self.visiteur.date}"
+            ]
+            texte = "\n".join(lignes)
+
         else:
             self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
             return
@@ -668,7 +658,7 @@ class Gestion(MDApp):
         if not file_path or not os.path.exists(file_path):
             self.show_error_dialog("Impossible d'envoyer : l'image de la pièce d'identité est manquante.")
             return
-        
+
 
         # Demander le numéro via tkinter dialog
         try:
@@ -690,7 +680,7 @@ class Gestion(MDApp):
         try:
             self.show_info_snackbar("Préparation de l'envoi WhatsApp... Veuillez patienter.")
             if type == "visiteur":
-                
+
                 pw.sendwhats_image(
                     receiver=phone,
                     img_path=file_path,
@@ -708,11 +698,11 @@ class Gestion(MDApp):
             else:
                 self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
                 return
-            
+
             self.show_info_snackbar("Envoi WhatsApp lancé avec succès. Veuillez vérifier votre navigateur.")
-            
+
             self.selected_document_path = ""
-            
+
         except FileNotFoundError as fe:
             print(f"Erreur fichier WhatsApp: {fe}")
             self.show_error_dialog(f"Erreur : le fichier image est introuvable.\n{fe}")
@@ -817,6 +807,11 @@ class Gestion(MDApp):
             print(f"Erreur lors de l'envoi de la notification : {e}")
              
     def on_start(self):
+        work_dir = os.path.join(os.path.expanduser("~"), "Documents", "GestionVisiteur")
+        os.makedirs(work_dir, exist_ok=True)
+        os.chdir(work_dir)
+        print("Répertoire de travail défini sur :", os.getcwd())
+        
         self.afficher_heros_visiteurs()
         Clock.schedule_interval(self._poll_for_new_items, self._notify_poll_interval)
     
@@ -826,35 +821,26 @@ class Gestion(MDApp):
             return
 
         # visitors
-        try:
+        with contextlib.suppress(Exception):
             shares = self.visitor_manager.get_active_shares_for_user(self.user.id)
             for s in shares:
                 if s.id not in self._notified_share_ids:
                     shared_by_user = self.user_manager.get_user_by_id(s.shared_by_user_id)
                     self.notify_new_share(shared_by_user, "visiteur")
                     # marque comme traité (ton manager semble proposer cette méthode)
-                    try:
+                    with contextlib.suppress(Exception):
                         self.visitor_manager.edit_share_status(s)
-                    except Exception:
-                        pass
                     self._notified_share_ids.add(s.id)
-        except Exception:
-            pass
-
         # documents
-        try:
+        with contextlib.suppress(Exception):
             docs = self.document_manager.get_active_shares_for_user(self.user.id)
             for d in docs:
                 if d.id not in self._notified_doc_ids:
                     shared_by_user = self.user_manager.get_user_by_id(d.shared_by_user_id)
                     self.notify_new_share(shared_by_user, "document")
-                    try:
+                    with contextlib.suppress(Exception):
                         self.document_manager.edit_share_status(d)
-                    except Exception:
-                        pass
                     self._notified_doc_ids.add(d.id)
-        except Exception:
-            pass
 
     def open_document(self, document):
         blob, filename = self.document_manager.get_document_blob(document.id)
@@ -965,8 +951,7 @@ class Gestion(MDApp):
             )
         except NotImplementedError:
             types = [("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
-            sel = self._tk_file_dialog(types, multiple=True)
-            if sel:
+            if sel:= self._tk_file_dialog(types, multiple=True):
                 self.select_file(sel)
                 
     def open_image_filechooser(self):
@@ -979,8 +964,7 @@ class Gestion(MDApp):
             )
         except NotImplementedError:
             types = [("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"))]
-            sel = self._tk_file_dialog(types, multiple=True)
-            if sel:
+            if sel:= self._tk_file_dialog(types, multiple=True):
                 self.select_file(sel)
 
     def open_menu(self, field_name):
@@ -993,7 +977,6 @@ class Gestion(MDApp):
             
             self.menu.caller=screen_ids.id_type
             self.menu.items=items
-            self.menu.open()
             
         elif field_name == "motif":
             items = [
@@ -1004,7 +987,6 @@ class Gestion(MDApp):
             ]
             self.menu.caller=screen_ids.motif
             self.menu.items=items
-            self.menu.open()
             
         else:
             months = ["Janvier", "Février", "Mars", "Avril", "May", "Juin",
@@ -1037,7 +1019,8 @@ class Gestion(MDApp):
             self.menu.items = items
             self.menu.caller = self.get_field(field_name)
             self.menu.width = dp(100)
-            self.menu.open()
+        
+        self.menu.open()
             
     def ouvrir_dialogue_partager(self):
         email_button = self.creer_bouton(
@@ -1080,23 +1063,7 @@ class Gestion(MDApp):
     def remplir_champs(self):
         screen = self.root.get_screen("screen B")
         if self.visiteur is None:
-            screen.ids.image.source = ""
-            screen.ids.phone_number.text = ""
-            screen.ids.place_of_birth.text = ""
-            screen.ids.motif.text = ""
-            screen.ids.date.text = ""
-            screen.ids.arrival_time.text = ""
-            screen.ids.exit_time.text = ""
-            screen.ids.observation.text = ""
-            
-            screen.ids.btn_delete.disabled = True
-            screen.ids.btn_share.disabled = True
-            screen.ids.btn_save.disabled = True
-            screen.ids.btn_cancel.disabled = True
-            return
-        
-        # Remplit les champs avec les données du visiteur sélectionné
-        screen.ids.image.source = self.visiteur.image_path
+            return self._remplir_champs_(screen)
         screen.ids.phone_number.text = self.visiteur.phone_number
         screen.ids.place_of_birth.text = self.visiteur.place_of_birth or ""
         screen.ids.motif.text = self.visiteur.motif
@@ -1104,9 +1071,29 @@ class Gestion(MDApp):
         screen.ids.arrival_time.text = self.visiteur.arrival_time
         screen.ids.exit_time.text = self.visiteur.exit_time or ""
         screen.ids.observation.text = self.visiteur.observation or ""
-            
+
+        screen.ids.image.source = self.visiteur.image_path
+        self.masquer_bouttons(screen)
+
+    # TODO Rename this here and in `remplir_champs`
+    def _remplir_champs_(self, screen):
+        screen.ids.image.source = ""
+        screen.ids.phone_number.text = ""
+        screen.ids.place_of_birth.text = ""
+        screen.ids.motif.text = ""
+        screen.ids.date.text = ""
+        screen.ids.arrival_time.text = ""
+        screen.ids.exit_time.text = ""
+        screen.ids.observation.text = ""
+
+        screen.ids.btn_delete.disabled = True
+        screen.ids.btn_share.disabled = True
+        return self.masquer_bouttons(screen)
+
+    def masquer_bouttons(self, screen):
         screen.ids.btn_save.disabled = True
         screen.ids.btn_cancel.disabled = True
+        return
 
     def renitialiser_filtre(self):
         screen = self.root.get_screen("screen A")
@@ -1121,29 +1108,32 @@ class Gestion(MDApp):
         screen = self.root.get_screen("new_password")
         new_password_first = screen.ids.new_password_first.text.rstrip()
         new_password_second = screen.ids.new_password_second.text.rstrip()
-        
+
         if not all([new_password_second, new_password_first]):
             self.show_error_dialog("Veuillez remplir les deux champs avec un nouveau mot de passe.")
-        
+
         if new_password_second != new_password_first:
             self.show_error_dialog("Les deux mots de passes doivent être identiques.")
             return
-        
+
         if len(new_password_first) < 8:
             self.show_error_dialog("La longueur minimale du mot de passe est de 8 caractères.")
             return
-        
+
         try:
-            self.user_manager.reset_password_with_token(self.token, new_password_first)
-            self.show_info_snackbar("Mot de passe rénitialisé avec succès!")
-            
-            screen.ids.new_password_first.text = ""
-            screen.ids.new_password_second.text = ""
-            self.root.get_screen("reset").ids.reset_email.text = ""
-            
-            self.root.current = "login"
+            self.reset_fields_modify_pw(new_password_first, screen)
         except ValueError as e:
             self.show_error_dialog(str(e))
+
+    def reset_fields_modify_pw(self, new_password_first, screen):
+        self.user_manager.reset_password_with_token(self.token, new_password_first)
+        self.show_info_snackbar("Mot de passe rénitialisé avec succès!")
+
+        screen.ids.new_password_first.text = ""
+        screen.ids.new_password_second.text = ""
+        self.root.get_screen("reset").ids.reset_email.text = ""
+
+        self.root.current = "login"
            
     def restart_app(self):
         python = sys.executable
@@ -1151,12 +1141,10 @@ class Gestion(MDApp):
             
     def signup(self, last_name, first_name, email, password_first, role):
         try:
-            user = self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
+            self.user_manager.add_user(last_name, first_name, email, password_first, "GN-Rabat", role)
             self.show_info_snackbar("Connexion réussie.")
             
-            make_transient(user)
-            
-            self.user = user
+            self.user = self.user_manager.authenticate_user(email, password_first)
             self.root.current = "screen A"
         except ValueError as e:
             self.show_error_dialog(str(e))
@@ -1180,7 +1168,7 @@ class Gestion(MDApp):
         screen_ids = self.root.get_screen("screen B").ids
         if name == "id":
             screen_ids.id_type.text = text
-        if name == "motif":
+        elif name == "motif":
             screen_ids.motif.text = text
         
         self.menu.dismiss()
@@ -1189,50 +1177,56 @@ class Gestion(MDApp):
     def select_file(self, selection):
         if not selection:
             return
-        
+
         for path in selection:
             if not path.lower().endswith(('.pdf', '.txt', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                 self.show_error_dialog(f"Fichier invalide: {path}")
                 continue
-        
-        
+
+
         if self.file_manager_mode == "document":
             self.file_manager_mode = None
             self.selected_document_path = selection[0]
             self.envoyer_par_whatsapp('document')
-        
-        elif self.file_manager_mode == "image":
-            self.file_manager_mode = None
-            self.activer_boutons_modification()
-            
-            path1 = Path(selection[0])
-            img1 = Image.open(path1)
-        
-            if len(selection) > 1:
-                path2 = Path(selection[1])
-                img2 = Image.open(path2)
 
-                # Fusion verticale (empilement)
-                new_img = Image.new("RGB", (max(img1.width, img2.width), img1.height + img2.height))
-                new_img.paste(img1, (0, 0))
-                new_img.paste(img2, (0, img1.height))
-                
-                image_dir = resource_path(os.path.join("pictures", "ID"))
-                os.makedirs(image_dir, exist_ok=True)
-                self.selected_image_path = os.path.join(image_dir, f"fusion_de_{path1.stem}_et_{path2.stem}.jpg")
-                new_img.save(self.selected_image_path)
-            else:
-                self.selected_image_path = str(path1)
+        elif self.file_manager_mode == "image":
+            self.set_img_path(selection)
             
-            self.root.get_screen("screen B").ids.image.source = self.selected_image_path
+    def set_img_path(self, selection):
+        self.file_manager_mode = None
+        self.activer_boutons_modification()
+
+        path1 = Path(selection[0])
+        img1 = Image.open(path1)
+
+        if len(selection) > 1:
+            self.concatene_save_image(selection, img1, path1)
+        else:
+            self.selected_image_path = str(path1)
+
+        self.root.get_screen("screen B").ids.image.source = self.selected_image_path
+
+    def concatene_save_image(self, selection, img1, path1):
+        path2 = Path(selection[1])
+        img2 = Image.open(path2)
+
+        # Fusion verticale (empilement)
+        new_img = Image.new("RGB", (max(img1.width, img2.width), img1.height + img2.height))
+        new_img.paste(img1, (0, 0))
+        new_img.paste(img2, (0, img1.height))
+
+        image_dir = os.path.join(os.path.expanduser("~"), "Documents", "GestionVisiteur", "ID")
+        os.makedirs(image_dir, exist_ok=True)
+        self.selected_image_path = os.path.join(image_dir, f"fusion_de_{path1.stem}_et_{path2.stem}.jpg")
+        new_img.save(self.selected_image_path)
     
     def send_document(self, receiver: str, path: str, caption: str):
         # Démarrer Chrome (assure-toi que le profil garde ta session WhatsApp)
         options = Options()
         options.add_experimental_option("detach", True)
 
-        # Créer un dossier pour sauvegarder le profil utilisateur
-        user_data_dir = os.path.join(os.getcwd(), "whatsapp_profile")
+        # Chemin vers Documents/GestionVisiteur/whatsapp_profile
+        user_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "GestionVisiteur", "whatsapp_profile")
         if not os.path.exists(user_data_dir):
             os.makedirs(user_data_dir)
 
@@ -1259,27 +1253,26 @@ class Gestion(MDApp):
         )
         attach_button.click()
 
-        # Trouver l'input file pour les documents
-        # WhatsApp ouvre un menu; l’élément input file pour documents a souvent:
-        file_input = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
-        )
-        file_input.send_keys(path)  # Chemin complet du fichier
-
-        # Ajouter une légende si besoin
-        time.sleep(1)
-        caption_box = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div[aria-label^='Entrez du texte']"))
-        )
-        caption_box.send_keys(caption)
-
-        time.sleep(1)
+        self.find_input_file(driver, "div[aria-label^='Entrez du texte']", caption)
+        self.find_input_file(driver, "input[type='file']", path)
         # Envoyer
         send_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "span[data-icon='wds-ic-send-filled']"))
         )
         time.sleep(1)
         send_button.click()
+        
+    # TODO Rename this here and in `send_document`
+    def find_input_file(self, driver, arg1, arg2):
+        # Trouver l'input file pour les documents
+        # WhatsApp ouvre un menu; l’élément input file pour documents a souvent:
+        file_input = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, arg1))
+        )
+        file_input.send_keys(arg2)
+
+        # Ajouter une légende si besoin
+        time.sleep(1)
         
     def share_document(self, from_user_id, to_user_id, document_path):
         document_type = os.path.splitext(document_path)[1][1:]
@@ -1327,7 +1320,7 @@ class Gestion(MDApp):
         self.root.transition = SlideTransition(direction="left")
     
     def toggle_password_visibility(self, btn, text_field):
-        text_field.password = False if btn.icon == "eye" else True
+        text_field.password = btn.icon != "eye"
         btn.icon = "eye-off" if btn.icon == "eye" else "eye"
         
     def update_notification_badge(self):
