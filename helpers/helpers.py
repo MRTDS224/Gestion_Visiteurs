@@ -11,5 +11,6 @@ def resource_path(relative_path):
         base_dir = sys._MEIPASS
     else:
         # En dev, on part du répertoire du fichier courant
-        base_dir = os.path.dirname(__file__)
+        base_dir = os.path.join(os.path.expanduser("~"), "Documents", "ProjetPython", "GestionVisiteurs")
+        os.makedirs(base_dir, exist_ok=True)
     return os.path.join(base_dir, relative_path)

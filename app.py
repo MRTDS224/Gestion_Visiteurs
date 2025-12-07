@@ -700,8 +700,7 @@ class Gestion(MDApp):
         except Exception as e:
             self.show_error_dialog("Erreur lors de l'envoi WhatsApp.")
             logger.error(f"L'erreur suivante vient de se produire {e}")
-            
-    
+               
     def exit_file_manager(self, *args):
         self.file_manager.close()
     
@@ -1073,7 +1072,6 @@ class Gestion(MDApp):
         screen.ids.image.source = self.visiteur.image_path
         self.masquer_bouttons(screen)
 
-    # TODO Rename this here and in `remplir_champs`
     def _remplir_champs_(self, screen):
         screen.ids.image.source = ""
         screen.ids.phone_number.text = ""
