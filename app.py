@@ -48,12 +48,7 @@ from plyer import filechooser, notification
 import tkinter as _tk
 from tkinter import filedialog as _fd
 import time
-from platform import system
-from urllib.parse import quote
 import webbrowser
-import pywhatkit as pw
-from pywhatkit.core.core import _web
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -543,6 +538,22 @@ class Gestion(MDApp):
             ),
         ]
         self.dialog = self.creer_dialogue("Confirmer la suppression", content, actions)
+    
+    def demander_numero(self):
+        # Demander le numéro via tkinter dialog
+        try:
+            import tkinter as tk
+            from tkinter import simpledialog
+            root = tk.Tk()
+            root.withdraw()
+            phone = simpledialog.askstring("WhatsApp", "Numéro destinataire (format +CCNNNN..., ex: +2126******06) :")
+            root.destroy()
+        except Exception as e:
+            self.show_error_dialog("Erreur lors de la saisie du numéro.")
+            logger.error(f"L'erreur suivante vient de se produire {e}")
+            phone = None
+        
+        return phone
         
     def enregistrer_modifications(self):
         try:
@@ -615,54 +626,38 @@ class Gestion(MDApp):
             self.show_error_dialog("Erreur lors de l'ajout.")
             logger.error(f"L'erreur suivante vient de se produire {e}")
 
-    def envoyer_par_whatsapp(self, type, *args):
+    def envoyer_image_visiteur_whatsapp(self, *args):
         """
         Envoi via WhatsApp Web avec pywhatkit.
         - Texte + image obligatoires ensemble.
         - Lève une erreur si l'image manque.
         - Demande le numéro destinataire via dialog.
         """
-        if type == "document":
-            if not self.selected_document_path:
-                self.show_error_dialog("Aucun document sélectionné.")
-                return
-            file_path = self.selected_document_path
-            texte = "Veuillez trouver le document ci-joint."
-        elif type == "visiteur":
-            if not self.visiteur:
-                self.show_error_dialog("Aucun visiteur sélectionné.")
-                return
-            file_path = self.visiteur.image_path
-            lignes = [
-                f"Téléphone : {self.visiteur.phone_number}",
-                f"Motif : {self.visiteur.motif}",
-                f"Date : {self.visiteur.date}"
-            ]
-            texte = "\n".join(lignes)
-
-        else:
-            self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
+        try:
+            import pywhatkit as pw
+        except Exception as e:
+            logger.error(f"Une erreur s'est produite {e}")
+            self.show_error_dialog("Désolé il faut être connecté à internet pour pouvoir faire ce partage.")
             return
 
+        if not self.visiteur:
+            self.show_error_dialog("Aucun visiteur sélectionné.")
+            return
+
+        lignes = [
+            f"Téléphone : {self.visiteur.phone_number}",
+            f"Motif : {self.visiteur.motif}",
+            f"Date : {self.visiteur.date}"
+        ]
+        texte = "\n".join(lignes)
+
         # Vérifier que l'image existe — c'est obligatoire
-        if not file_path or not os.path.exists(file_path):
+        if not self.visiteur.image_path or not os.path.exists(self.visiteur.image_path):
             self.show_error_dialog("Impossible d'envoyer : l'image de la pièce d'identité est manquante.")
             return
 
-
-        # Demander le numéro via tkinter dialog
-        try:
-            import tkinter as tk
-            from tkinter import simpledialog
-            root = tk.Tk()
-            root.withdraw()
-            phone = simpledialog.askstring("WhatsApp", "Numéro destinataire (format +CCNNNN..., ex: +212691077106) :")
-            root.destroy()
-        except Exception as e:
-            self.show_error_dialog("Erreur lors de la saisie du numéro.")
-            logger.error(f"L'erreur suivante vient de se produire {e}")
-            phone = None
-
+        phone = self.demander_numero()
+        
         if not phone:
             self.show_error_dialog("Aucun numéro fourni. Envoi annulé.")
             return
@@ -670,29 +665,17 @@ class Gestion(MDApp):
         # Envoyer via pywhatkit
         try:
             self.show_info_snackbar("Préparation de l'envoi WhatsApp... Veuillez patienter.")
-            if type == "visiteur":
 
-                pw.sendwhats_image(
-                    receiver=phone,
-                    img_path=file_path,
-                    caption=texte,
-                    wait_time=15,
-                    tab_close=True,
-                    close_time=10
-                )
-            elif type == "document":
-                self.send_document(
-                    phone,
-                    path=file_path,
-                    caption=texte,
-                )
-            else:
-                self.show_error_dialog("Type d'envoi WhatsApp inconnu.")
-                return
+            pw.sendwhats_image(
+                receiver=phone,
+                img_path=self.visiteur.image_path,
+                caption=texte,
+                wait_time=15,
+                tab_close=True,
+                close_time=10
+            )
 
             self.show_info_snackbar("Envoi WhatsApp lancé avec succès. Veuillez vérifier votre navigateur.")
-
-            self.selected_document_path = ""
 
         except FileNotFoundError as fe:
             self.show_error_dialog("Erreur : le fichier image est introuvable.")
@@ -938,14 +921,14 @@ class Gestion(MDApp):
         self.file_manager_mode = "document"
         try:    
             filechooser.open_file(
-                filters=["(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)", "*"],
+                filters=["*", "(;*.pdf;*.txt;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx)", "(;*.png;*.jpg;*.jpeg;*.bmp;*.gif)"],
                 on_selection=self.select_file,
                 multiple=True
             )
         except NotImplementedError as e:
             logger.error(f"L'erreur suivante vient de se produire {e}")
             logger.info("Lancement du filechooser avec TKINTER")
-            types = [("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
+            types = ["*", ("Documents", ("*.pdf", "*.txt", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx"))]
             if sel:= self._tk_file_dialog(types, multiple=True):
                 self.select_file(sel)
                 
@@ -1030,7 +1013,7 @@ class Gestion(MDApp):
             "Envoyer par whatsapp",
             style="outlined",
             icone="whatsapp",
-            on_release=lambda x: self.envoyer_par_whatsapp()
+            on_release=lambda x: self.envoyer_image_visiteur_whatsapp()
         )
         
         content = MDGridLayout(cols=2, spacing=10, size_hint_y=None, adaptive_height=True)
@@ -1187,7 +1170,7 @@ class Gestion(MDApp):
         if self.file_manager_mode == "document":
             self.file_manager_mode = None
             self.selected_document_path = selection[0]
-            self.envoyer_par_whatsapp('document')
+            self.send_document()
 
         elif self.file_manager_mode == "image":
             self.set_img_path(selection)
@@ -1220,7 +1203,26 @@ class Gestion(MDApp):
         self.selected_image_path = os.path.join(image_dir, f"fusion_de_{path1.stem}_et_{path2.stem}.jpg")
         new_img.save(self.selected_image_path)
     
-    def send_document(self, receiver: str, path: str, caption: str):
+    def send_document(self):
+        if not self.selected_document_path:
+            self.show_error_dialog("Aucun document sélectionné.")
+            return
+
+        caption = "Veuillez trouver le document ci-joint."
+        receiver = self.demander_numero()
+
+        try:
+            self.send_document_whatsapp(receiver, caption)
+        except Exception as e:
+            logger.error(f"Une erreur s'est produite {e}")
+            self.show_error_dialog("Désolé il faut être connecté à internet pour pouvoir faire ce partage. \nVérifiez l'état de votre connexion")
+            return
+
+        self.selected_document_path = ""
+
+    def send_document_whatsapp(self, receiver, caption):
+        from selenium import webdriver
+
         # Démarrer Chrome (assure-toi que le profil garde ta session WhatsApp)
         options = Options()
         options.add_experimental_option("detach", True)
@@ -1254,14 +1256,14 @@ class Gestion(MDApp):
         attach_button.click()
 
         self.find_input_file(driver, "div[aria-label^='Entrez du texte']", caption)
-        self.find_input_file(driver, "input[type='file']", path)
+        self.find_input_file(driver, "input[type='file']", self.selected_document_path)
         # Envoyer
         send_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "span[data-icon='wds-ic-send-filled']"))
         )
         time.sleep(1)
         send_button.click()
-        
+    
     def find_input_file(self, driver, arg1, arg2):
         # Trouver l'input file pour les documents
         # WhatsApp ouvre un menu; l’élément input file pour documents a souvent:
